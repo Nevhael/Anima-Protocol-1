@@ -30,3 +30,11 @@ re-adding voice via `functions.invoke` will silently get no audio.
 Resonance Field (`useResonance.js`) deepens EMOTIONAL intimacy/presence only via
 a prompt-guidance string — by design it never escalates to anatomical/explicit
 content, independent of the separate global adult-mode toggle.
+
+User-state context (check-in + journal, via `useVesselContext.js`) is injected
+into the solo system prompt. It is USER-AUTHORED = untrusted: it must be
+sanitized (strip instruction-like phrases, collapse newlines) and wrapped in
+explicit DATA-ONLY delimiters before going anywhere near the system prompt.
+**Why:** raw user text in system-instruction space is a prompt-injection path
+that can override the no-explicit-content boundary. Same rule applies to any
+future user-authored data piped into prompts here.

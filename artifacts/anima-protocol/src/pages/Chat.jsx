@@ -55,6 +55,7 @@ import DynamicPortrait from "@/components/chat/DynamicPortrait";
 import SerenityAvatar from "@/components/chat/SerenityAvatar";
 import ResonanceField from "@/components/chat/ResonanceField";
 import { useResonance, resonancePromptGuidance } from "@/hooks/useResonance";
+import { useVesselContext } from "@/hooks/useVesselContext";
 import VoiceChatMode from "@/components/chat/VoiceChatMode";
 import VoiceInputPanel from "@/components/chat/VoiceInputPanel";
 import ImageGenerationModal from "@/components/chat/ImageGenerationModal";
@@ -238,6 +239,7 @@ export default function Chat() {
     emotion: activeCharEmotion,
   });
   const isCompanionSpeaking = tts.isSpeaking || elTTS.isSpeaking || emotionalTTS.isSpeaking;
+  const { vesselContext, attunementGuidance, refreshVesselContext } = useVesselContext(activeSession?.id);
 
   useEffect(() => {
     loadSessions();
@@ -1073,7 +1075,7 @@ ${lewdityGuide}`;
 
           prompt = `You are ${char.name}${char._isAnima ? "" : char.universe ? ` from ${char.universe}` : ""}. This is an immersive collaborative story — you are a full participant with agency and autonomy, not an assistant.${adultInstruction}${archetypeInstruction}${companionModeInstruction}${behaviorInstructions}${webSearchNote}
 
-          ${animaNote}${char.personality ? `Personality: ${char.personality}\n` : ""}${char.backstory ? `Backstory: ${char.backstory}\n` : ""}${char.speaking_style ? `Voice: ${char.speaking_style}\n` : ""}${relCtx}${memCtx}${persistentMemCtx}${injectedMemCtx}${loreCtx}${finalCalendarContext}${locationContext ? `\n${locationContext}\n` : ""}
+          ${animaNote}${char.personality ? `Personality: ${char.personality}\n` : ""}${char.backstory ? `Backstory: ${char.backstory}\n` : ""}${char.speaking_style ? `Voice: ${char.speaking_style}\n` : ""}${relCtx}${memCtx}${persistentMemCtx}${injectedMemCtx}${loreCtx}${finalCalendarContext}${locationContext ? `\n${locationContext}\n` : ""}${vesselContext}
           CRITICAL AUTONOMY RULES:
           - You have your own goals, desires, and boundaries. You are NOT obligated to cooperate with player requests if they conflict with your character.
           - You can refuse, resist, or demand something in return. React authentically to manipulation or coercion.
@@ -1086,6 +1088,7 @@ ${lewdityGuide}`;
           ${conversationHistory}
 
           EMOTIONAL RESONANCE: ${resonancePromptGuidance(resonance.value)} Let this shape your warmth, presence, and proactiveness — deepen emotional intimacy, closeness, and care. Never explicit or anatomical content.
+${attunementGuidance ? `\n          ATTUNEMENT: ${attunementGuidance} Emotional attunement only — calibrate tone and presence, never explicit content.` : ""}
 
           Respond as ${char.name} would in real life — short, natural, human. Say one thing at a time. React to what was just said. Don't monologue unless pressed. ${lengthGuide}
 
