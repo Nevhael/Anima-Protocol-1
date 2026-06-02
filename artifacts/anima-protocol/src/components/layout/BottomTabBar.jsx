@@ -1,81 +1,49 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { MessageSquare, Users, Settings, Sparkles, Heart, Menu, X, BookOpen, Home } from "lucide-react";
-import { useTabNavigation } from "@/hooks/useTabNavigation";
-import { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { MessageSquare, BookOpen, Globe, Grid3x3, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 
-// Paths where we want to preserve scroll position across tab switches
-const SCROLL_PRESERVED_PATHS = ["/", "/chat"];
-
-// Per-tab last-visited path — maps tab root path → last full path visited within that tab
-const TAB_ROOTS = ["/", "/characters", "/chronicles", "/animas", "/meditation", "/settings"];
-
-function getTabRoot(pathname) {
-  // Find the longest matching tab root
-  return TAB_ROOTS.slice().sort((a, b) => b.length - a.length).find(root =>
-    root === "/" ? pathname === "/" || pathname.startsWith("/chat") : pathname.startsWith(root)
-  ) || "/";
-}
-
-function saveTabPath(tabRoot, pathname) {
-  sessionStorage.setItem(`tab_path_${tabRoot.replace(/\//g, "_") || "root"}`, pathname);
-}
-
-function getTabPath(tabRoot) {
-  return sessionStorage.getItem(`tab_path_${tabRoot.replace(/\//g, "_") || "root"}`) || tabRoot;
-}
-
-function saveScrollPosition(pathname) {
-  const key = `scroll_pos_${pathname.replace(/\//g, "_") || "root"}`;
-  const scrollEl = document.querySelector("[data-scroll-preserve]") || document.querySelector(".overflow-y-auto");
-  if (scrollEl) sessionStorage.setItem(key, String(scrollEl.scrollTop));
-}
-
-function restoreScrollPosition(pathname) {
-  const key = `scroll_pos_${pathname.replace(/\//g, "_") || "root"}`;
-  const saved = sessionStorage.getItem(key);
-  if (!saved) return;
-  requestAnimationFrame(() => {
-    const scrollEl = document.querySelector("[data-scroll-preserve]") || document.querySelector(".overflow-y-auto");
-    if (scrollEl) scrollEl.scrollTop = parseInt(saved, 10);
-  });
-}
-
-const tabs = [
-  { path: "/home", label: "Home", icon: Home },
-  { path: "/", label: "Chat", icon: MessageSquare, special: "chat" },
-  { path: "/characters", label: "Characters", icon: Users },
-  { path: "/chronicles", label: "Chronicles", icon: BookOpen },
-  { path: "/animas", label: "Animas", icon: Sparkles },
-  { path: "/meditation", label: "Sacred", icon: Heart },
-  { path: "/settings", label: "Settings", icon: Settings },
+const ALL_MODULES = [
+  { label: "Sign Out", path: "/landing", icon: "⎋" },
+  { label: "Chat", path: "/chat", icon: "💬" },
+  { label: "Settings", path: "/settings", icon: "⚙" },
+  { label: "Storyboard", path: "/storyboard", icon: "📋" },
+  { label: "Narrative", path: "/narrative", icon: "📊" },
+  { label: "Flowchart", path: "/flowchart", icon: "⧖" },
+  { label: "What-If", path: "/what-if", icon: "✦" },
+  { label: "Quest Journal", path: "/quest-journal", icon: "📜" },
+  { label: "World Map", path: "/worldmap", icon: "🌐" },
+  { label: "Locations", path: "/locationsmap", icon: "📍" },
+  { label: "Calendar", path: "/integrated-calendar", icon: "📅" },
+  { label: "Chronicles", path: "/chronicles", icon: "⏳" },
+  { label: "World Codex", path: "/worldcodex", icon: "📖" },
+  { label: "Lore Book", path: "/lorebook", icon: "📚" },
+  { label: "Journals", path: "/journals", icon: "📔" },
+  { label: "Session Wiki", path: "/wiki", icon: "🗂" },
+  { label: "Global Wiki", path: "/globalwiki", icon: "🌍" },
+  { label: "Memory Map", path: "/memory-map", icon: "🧠" },
+  { label: "Inventory", path: "/inventory", icon: "🎒" },
+  { label: "Characters", path: "/characters", icon: "👥" },
+  { label: "Check-In", path: "/check-in", icon: "✚" },
 ];
 
-export default function BottomTabBar({ onMenuClick }) {
+const PINNED_TABS = [
+  { path: "/chat", label: "Chat", Icon: MessageSquare },
+  { path: "/storyboard", label: "Board", Icon: BookOpen },
+  { path: "/worldmap", label: "Map", Icon: Globe },
+];
+
+function isTabActive(tabPath, pathname) {
+  if (tabPath === "/chat") return pathname === "/chat" || pathname.startsWith("/chat/");
+  return pathname === tabPath || pathname.startsWith(tabPath + "/");
+}
+
+export default function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { handleTabClick, getActiveTab } = useTabNavigation();
   const [open, setOpen] = useState(false);
   const [mostRecentSessionId, setMostRecentSessionId] = useState(null);
-
-  // Save scroll when leaving a preserved path
-  const handleTabNavigate = useCallback((toPath, fromPath) => {
-    const isPreserved = SCROLL_PRESERVED_PATHS.some(p => fromPath.startsWith(p));
-    if (isPreserved) saveScrollPosition(fromPath);
-  }, []);
-
-  // Restore scroll when arriving at a preserved path
-  useEffect(() => {
-    const isPreserved = SCROLL_PRESERVED_PATHS.some(p => location.pathname.startsWith(p));
-    if (isPreserved) restoreScrollPosition(location.pathname);
-  }, [location.pathname]);
-
-  // Save the current path under its tab root whenever location changes
-  useEffect(() => {
-    const root = getTabRoot(location.pathname);
-    saveTabPath(root, location.pathname);
-  }, [location.pathname]);
 
   useEffect(() => {
     base44.entities.ChatSession.list("-updated_date", 1).then(sessions => {
@@ -83,105 +51,103 @@ export default function BottomTabBar({ onMenuClick }) {
     }).catch(() => {});
   }, []);
 
-  const activeTab = getActiveTab(location.pathname);
-  const activeTabData = tabs.find(t => t.path === activeTab) || tabs[0];
-  const ActiveIcon = activeTabData.icon;
+  const handleChatNav = () => {
+    navigate("/chat");
+  };
 
   return (
     <>
-      {/* Backdrop */}
+      {/* All Modules Overlay */}
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              className="fixed bottom-[52px] left-0 right-0 z-50 bg-[#090912] border-t border-primary/20 max-h-[65dvh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-primary/10">
+                <span className="font-mono text-[11px] tracking-[0.3em] text-primary/80 uppercase">// All Modules</span>
+                <button onClick={() => setOpen(false)} className="text-primary/40 hover:text-primary transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-px bg-primary/5 p-px">
+                {ALL_MODULES.map(({ label, path, icon }) => {
+                  const isActive = isTabActive(path, location.pathname);
+                  return (
+                    <button
+                      key={path}
+                      onClick={() => { navigate(path); setOpen(false); }}
+                      className={`flex flex-col items-center justify-center gap-2 py-5 px-3 bg-[#090912] transition-all ${
+                        isActive ? "bg-primary/10 text-primary" : "text-primary/40 hover:bg-primary/5 hover:text-primary/70"
+                      }`}
+                    >
+                      <span className="text-xl leading-none">{icon}</span>
+                      <span className="font-mono text-[8px] tracking-[0.15em] uppercase text-center leading-tight">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Vertical nav drawer — mobile: full width from bottom; desktop: left-anchored panel */}
-      <AnimatePresence>
-        {open && (
-          <motion.nav
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed z-50 border border-primary/30 bg-black/95 backdrop-blur-md overflow-y-auto
-              /* mobile */ bottom-0 left-0 right-0 border-t
-              /* desktop */ lg:bottom-14 lg:right-2 lg:left-auto lg:rounded-lg lg:w-52 lg:border"
-            style={{ maxHeight: "60dvh", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-          >
-            <div className="flex flex-col py-2">
-              {tabs.map(({ path, label, icon: Icon, special }) => {
-                const isActive = activeTab === path;
-                return (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleTabNavigate(path, location.pathname);
-                      // For Chat tab, always go to most recent session
-                      if (special === "chat" && mostRecentSessionId) {
-                        navigate(`/chat/${mostRecentSessionId}`);
-                      } else {
-                        // Restore last visited path within this tab
-                        const savedPath = getTabPath(path);
-                        navigate(savedPath);
-                      }
-                      setOpen(false);
-                    }}
-                    className={`flex items-center gap-4 px-6 py-4 transition-all border-b border-primary/10 last:border-b-0 ${
-                      isActive
-                        ? "text-primary bg-primary/10"
-                        : "text-primary/40 hover:text-primary/70 hover:bg-primary/5"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span className={`font-mono text-sm tracking-[0.2em] uppercase ${isActive ? "glow-text" : ""}`}>
-                      {label}
-                    </span>
-                    {isActive && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom bar — mobile, tablet & desktop */}
-       <div
-        className="fixed bottom-0 z-[999] border-t border-primary/20 bg-black/95 backdrop-blur-md tab-bar flex items-center justify-between px-3 min-h-[44px]
-          left-0 right-0"
-       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      {/* Bottom Tab Bar */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[999] bg-[#090912]/95 backdrop-blur-md border-t border-primary/20 flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)", minHeight: "52px" }}
       >
+        {PINNED_TABS.map(({ path, label, Icon }) => {
+          const active = isTabActive(path, location.pathname);
+          return (
+            <button
+              key={path}
+              onClick={path === "/chat" ? handleChatNav : () => navigate(path)}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-all relative ${
+                active ? "text-primary" : "text-primary/30 hover:text-primary/60"
+              }`}
+            >
+              <Icon className="w-[18px] h-[18px]" strokeWidth={active ? 2 : 1.5} />
+              <span className="font-mono text-[8px] tracking-[0.15em] uppercase">{label}</span>
+              {active && (
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-[1px] bg-primary shadow-[0_0_6px_#22d3ee]" />
+              )}
+            </button>
+          );
+        })}
+
+        {/* More tab */}
         <button
-           onClick={() => setOpen(!open)}
-           className="p-2 text-primary/60 hover:text-primary transition-colors flex-shrink-0"
-           aria-label="Toggle menu"
-           type="button"
-         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" pointerEvents="none">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        <div className="flex items-center gap-3 text-primary">
-          <ActiveIcon className="w-5 h-5" />
-          <span className="font-mono text-xs tracking-[0.2em] uppercase glow-text">{activeTabData.label}</span>
-        </div>
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-2 text-primary/50 hover:text-primary transition-colors"
-          aria-label="Navigation menu"
+          onClick={() => setOpen(v => !v)}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-all relative ${
+            open ? "text-primary" : "text-primary/30 hover:text-primary/60"
+          }`}
         >
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <Grid3x3 className="w-[18px] h-[18px]" strokeWidth={open ? 2 : 1.5} />
+          <span className="font-mono text-[8px] tracking-[0.15em] uppercase">More</span>
+          {open && (
+            <span className="absolute bottom-0 left-1/4 right-1/4 h-[1px] bg-primary shadow-[0_0_6px_#22d3ee]" />
+          )}
+        </button>
+
+        {/* Red status / check-in dot */}
+        <button
+          onClick={() => { navigate("/check-in"); setOpen(false); }}
+          className="flex items-center justify-center w-12 flex-shrink-0 transition-all"
+          title="Check-In"
+        >
+          <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
         </button>
       </div>
     </>

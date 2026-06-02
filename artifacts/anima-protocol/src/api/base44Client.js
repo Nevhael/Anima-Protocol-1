@@ -128,15 +128,21 @@ export const base44 = {
     },
     redirectToLogin: () => {},
     me: async () => ensureGuestUser(),
-    logout: async () => {
-      setAuthUser(null);
-      window.location.href = '/';
+    updateMe: async (data) => {
+      const user = ensureGuestUser();
+      const updated = { ...user, ...data };
+      setAuthUser(updated);
+      return updated;
     },
     updateMyUserData: async (data) => {
       const user = ensureGuestUser();
       const updated = { ...user, ...data };
       setAuthUser(updated);
       return updated;
+    },
+    logout: async (redirectPath) => {
+      setAuthUser(null);
+      window.location.href = redirectPath || '/';
     },
   },
 

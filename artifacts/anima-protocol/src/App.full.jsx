@@ -143,6 +143,7 @@ const Chronicles = lazy(() => import("./pages/Chronicles"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Disclaimer = lazy(() => import("./pages/Disclaimer"));
 
+import { Navigate } from "react-router-dom";
 import AIDisclaimerModal from "@/components/legal/AIDisclaimerModal";
 import InAppBrowserWarning from "@/components/InAppBrowserWarning";
 import TapTargetValidator from "@/components/mobile/TapTargetValidator";
@@ -229,15 +230,8 @@ const AuthenticatedApp = () => {
           style={{ paddingBottom: "var(--tab-bar-height, 0px)" }}
         >
           <Routes location={location}>
-            {/* Root MUST show login/landing */}
-            <Route
-              path="/"
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <Landing />
-                </Suspense>
-              }
-            />
+            {/* Root redirects to chat */}
+            <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route
               path="/landing"
               element={
@@ -246,8 +240,6 @@ const AuthenticatedApp = () => {
                 </Suspense>
               }
             />
-
-            {/* After login, your app goes to chat */}
             <Route
               path="/login"
               element={
