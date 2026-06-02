@@ -108,17 +108,19 @@ export default function Characters() {
     try {
       let finalForm = form;
       
-      // If creating new character with universe but missing personality/backstory/speaking_style, auto-generate
+      // If creating a new character with a universe but missing
+      // personality/backstory/speaking_style, scour the web for their
+      // mannerisms and speech patterns to populate the gaps.
       if (!editingChar && form.universe && (!form.personality || !form.backstory || !form.speaking_style)) {
         const generated = await base44.functions.invoke('generateCharacterTraits', {
           name: form.name,
           universe: form.universe
-        });
+        }) || {};
         finalForm = {
           ...form,
-          personality: generated.personality || form.personality,
-          backstory: generated.backstory || form.backstory,
-          speaking_style: generated.speaking_style || form.speaking_style
+          personality: form.personality || generated.personality || "",
+          backstory: form.backstory || generated.backstory || "",
+          speaking_style: form.speaking_style || generated.speaking_style || ""
         };
       }
 
@@ -151,12 +153,11 @@ export default function Characters() {
     if (!form.name.trim()) return;
     setFetchingBio(true);
     try {
-      const result = await base44.functions.invoke("fetchCharacterBioFromWikipedia", {
-        character_name: form.name,
-        character_universe: form.universe || null,
+      const bioData = await base44.functions.invoke("generateCharacterTraits", {
+        name: form.name,
+        universe: form.universe || null,
       });
-      if (result?.data?.data) {
-        const bioData = result.data.data;
+      if (bioData) {
         setForm(prev => ({
           ...prev,
           personality: bioData.personality || prev.personality,
@@ -165,7 +166,7 @@ export default function Characters() {
         }));
       }
     } catch (err) {
-      console.error("Error fetching Wikipedia bio:", err);
+      console.error("Error researching character:", err);
     } finally {
       setFetchingBio(false);
     }
@@ -427,7 +428,7 @@ export default function Characters() {
                 ) : (
                   <>
                     <BookOpen className="w-3 h-3" />
-                    Fetch from Wikipedia
+                    Research from Web
                   </>
                 )}
               </button>

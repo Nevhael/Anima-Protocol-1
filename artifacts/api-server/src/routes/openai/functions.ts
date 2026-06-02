@@ -23,6 +23,43 @@ async function llm(systemPrompt: string, userPrompt: string, maxTokens = 1024): 
   return resp.choices[0]?.message?.content ?? "";
 }
 
+// Web-grounded LLM call: uses the OpenAI Responses API with the web_search
+// tool so the model can scour the live web (cast to any to stay compatible
+// across SDK minor versions). Falls back to the plain model if unavailable.
+async function webSearchLLM(systemPrompt: string, userPrompt: string): Promise<string> {
+  try {
+    const resp = await (openai as any).responses.create({
+      model: "gpt-4o",
+      tools: [{ type: "web_search_preview" }],
+      instructions: systemPrompt,
+      input: userPrompt,
+    });
+    const text = (resp as any).output_text;
+    if (typeof text === "string" && text.trim()) return text;
+    return await llm(systemPrompt, userPrompt);
+  } catch {
+    return llm(systemPrompt, userPrompt);
+  }
+}
+
+function parseTraits(raw: string): { personality: string; backstory: string; speaking_style: string } {
+  const empty = { personality: "", backstory: "", speaking_style: "" };
+  try {
+    const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end === -1) return empty;
+    const obj = JSON.parse(cleaned.slice(start, end + 1));
+    return {
+      personality: typeof obj.personality === "string" ? obj.personality : "",
+      backstory: typeof obj.backstory === "string" ? obj.backstory : "",
+      speaking_style: typeof obj.speaking_style === "string" ? obj.speaking_style : "",
+    };
+  } catch {
+    return empty;
+  }
+}
+
 router.post("/invoke/:fnName", async (req, res) => {
   const { fnName } = req.params;
   const data = req.body as Record<string, unknown>;
@@ -219,9 +256,20 @@ router.post("/invoke/:fnName", async (req, res) => {
         break;
       }
 
+      case "generateCharacterTraits":
       case "enrichCharacterFromWikipedia":
       case "fetchCharacterBioFromWikipedia": {
-        result = { bio: "", enriched: false };
+        const name = ((data.name as string) || (data.character_name as string) || "").trim();
+        const universe = ((data.universe as string) || (data.character_universe as string) || "").trim();
+        if (!name) {
+          result = { personality: "", backstory: "", speaking_style: "" };
+          break;
+        }
+        const raw = await webSearchLLM(
+          "You are a character research assistant. Use web search to find how the specified fictional character actually behaves and talks across their canonical source material. Return ONLY a valid JSON object with exactly these string fields: \"personality\", \"backstory\", and \"speaking_style\". Each field should be 2-4 sentences. The \"speaking_style\" field must capture concrete, imitable details: verbal tics, catchphrases, vocabulary, rhythm, tone, and mannerisms, so an AI can convincingly speak as them. If you cannot find an established, real character by this name, return all three fields as empty strings. Do not include markdown, code fences, or any text outside the JSON.",
+          `Research the character "${name}"${universe ? ` from ${universe}` : ""}. Focus especially on their distinctive speech patterns and mannerisms.`
+        );
+        result = parseTraits(raw);
         break;
       }
 
