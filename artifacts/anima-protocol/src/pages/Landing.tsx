@@ -200,7 +200,7 @@ export default function Landing() {
 }
 
 // Helper Component for Navigation
-function NavIcon({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) {
+function NavIcon({ icon, label, active = false }) {
   return (
     <div className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all ${active ? 'text-cyan-400' : 'text-cyan-900 hover:text-cyan-600'}`}>
       {icon}
