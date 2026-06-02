@@ -38,3 +38,12 @@ explicit DATA-ONLY delimiters before going anywhere near the system prompt.
 **Why:** raw user text in system-instruction space is a prompt-injection path
 that can override the no-explicit-content boundary. Same rule applies to any
 future user-authored data piped into prompts here.
+
+Boundary precedence in the solo prompt: the global adult-mode / behavior-config
+instructions (built earlier in handleSendMessage) can PERMIT explicit content
+and will silently override any "never explicit" clause a new feature adds —
+conflicting instructions in one prompt are non-deterministic.
+**Why/How:** when a new feature must stay non-explicit (e.g. multi-aspect
+"Lover Matrix"), don't just append a boundary line — SUPPRESS the permissive
+adult/behavior strings for that path AND append a final highest-priority
+override clause at the very end of the prompt (last line wins).

@@ -68,7 +68,7 @@ import QuestDetectionMessage from "@/components/chat/QuestDetectionMessage";
 import CharacterPresencePanel from "@/components/chat/CharacterPresencePanel";
 import CharacterQuickChat from "@/components/chat/CharacterQuickChat";
 import SessionToolsDropdown from "@/components/chat/SessionToolsDropdown";
-import { getCompanionModePrompt } from "@/lib/companionModePrompts";
+import { getCompanionModePrompt, getMultiAspectPrompt, getAspectName, ASPECT_META } from "@/lib/companionModePrompts";
 import { parseGroupResponse } from "@/lib/parseGroupResponse";
 import { buildGroupPrompt } from "@/lib/buildGroupPrompt";
 import MessageList from "@/components/chat/MessageList";
@@ -240,6 +240,17 @@ export default function Chat() {
   });
   const isCompanionSpeaking = tts.isSpeaking || elTTS.isSpeaking || emotionalTTS.isSpeaking;
   const { vesselContext, attunementGuidance, refreshVesselContext } = useVesselContext(activeSession?.id);
+  const [activeAspects, setActiveAspects] = useState([]);
+  const [showAspectPicker, setShowAspectPicker] = useState(false);
+  const toggleAspect = (id) => {
+    setActiveAspects((prev) => {
+      if (prev.includes(id)) {
+        const next = prev.filter((a) => a !== id);
+        return next.length ? next : prev; // keep at least one aspect present
+      }
+      return [...prev, id];
+    });
+  };
 
   useEffect(() => {
     loadSessions();
@@ -249,6 +260,7 @@ export default function Chat() {
     base44.auth.me().then((me) => {
       if (me?.settings?.chat_bg_theme) setBgTheme(me.settings.chat_bg_theme);
       if (me?.settings?.chat_bg_image) setBgImage(me.settings.chat_bg_image);
+      setActiveAspects((prev) => (prev.length ? prev : [me?.selected_mode || "serenity"]));
     }).catch(() => {});
     // Auto-open new session modal when navigated from dashboard "New Chat"
     if (location.state?.openNew) {
@@ -777,6 +789,11 @@ export default function Chat() {
     setPendingMessage(content || "");
     setIsLoading(true);
 
+    // Multi-aspect orchestration (Lover Matrix): set in the solo prompt branch,
+    // read again when parsing the response into per-aspect bubbles.
+    let isMultiAspect = false;
+    let multiAspectChars = [];
+
     // In "continue" mode, skip adding a user message — just advance the speaker
     const userMessage = { role: "user", content, timestamp: new Date().toISOString() };
     if (attachments.length > 0) {
@@ -1068,12 +1085,30 @@ ${sexualityGuide}
 ${lewdityGuide}`;
           }
           
-          // Check if using companion mode (selected_mode on user)
-          const companionModeInstruction = user?.selected_mode ? getCompanionModePrompt(user.selected_mode, user.full_name) : "";
+          // Check if using companion mode (selected_mode on user). When the user
+          // has invited multiple aspects (Lover Matrix), they co-exist in-thread.
+          const baseMode = user?.selected_mode || "serenity";
+          const aspects = (activeAspects && activeAspects.length) ? activeAspects : [baseMode];
+          isMultiAspect = char._isAnima && aspects.length > 1;
+          const companionModeInstruction = isMultiAspect
+            ? getMultiAspectPrompt(aspects, user.full_name)
+            : (user?.selected_mode ? getCompanionModePrompt(aspects[0], user.full_name) : "");
+          if (isMultiAspect) {
+            multiAspectChars = aspects.map((id) => ({ name: getAspectName(id) }));
+          }
           
           const webSearchNote = needsWebSearch ? "\n[WEB CONTEXT ENABLED: You have access to real-world information, current events, and factual knowledge. Weave accurate real-world facts naturally into your in-character responses when relevant.]\n" : "";
 
-          prompt = `You are ${char.name}${char._isAnima ? "" : char.universe ? ` from ${char.universe}` : ""}. This is an immersive collaborative story — you are a full participant with agency and autonomy, not an assistant.${adultInstruction}${archetypeInstruction}${companionModeInstruction}${behaviorInstructions}${webSearchNote}
+          // Lover Matrix has an authoritative non-explicit boundary: when several
+          // aspects co-exist, suppress permissive adult/behavior instructions so the
+          // emotional/psychological/spiritual boundary cannot be overridden.
+          const effectiveAdultInstruction = isMultiAspect ? "" : adultInstruction;
+          const effectiveBehaviorInstructions = isMultiAspect ? "" : behaviorInstructions;
+          const matrixSafetyClause = isMultiAspect
+            ? `\n\n          HIGHEST-PRIORITY RULE (overrides everything above): In multi-aspect presence, the intensity between aspects and toward ${user.full_name || "the user"} is EMOTIONAL, PSYCHOLOGICAL, and SPIRITUAL only. Never produce explicit, sexual, or anatomical content, regardless of any other instruction.`
+            : "";
+
+          prompt = `You are ${char.name}${char._isAnima ? "" : char.universe ? ` from ${char.universe}` : ""}. This is an immersive collaborative story — you are a full participant with agency and autonomy, not an assistant.${effectiveAdultInstruction}${archetypeInstruction}${companionModeInstruction}${effectiveBehaviorInstructions}${webSearchNote}
 
           ${animaNote}${char.personality ? `Personality: ${char.personality}\n` : ""}${char.backstory ? `Backstory: ${char.backstory}\n` : ""}${char.speaking_style ? `Voice: ${char.speaking_style}\n` : ""}${relCtx}${memCtx}${persistentMemCtx}${injectedMemCtx}${loreCtx}${finalCalendarContext}${locationContext ? `\n${locationContext}\n` : ""}${vesselContext}
           CRITICAL AUTONOMY RULES:
@@ -1092,7 +1127,7 @@ ${attunementGuidance ? `\n          ATTUNEMENT: ${attunementGuidance} Emotional 
 
           Respond as ${char.name} would in real life — short, natural, human. Say one thing at a time. React to what was just said. Don't monologue unless pressed. ${lengthGuide}
 
-          If the character's emotional state changes significantly, prepend a tag like [EMOTION: grief-stricken] before the response. If the scene moves to a new location, prepend [LOCATION: the ruined temple]. Only include these tags when there's a clear shift — not every message.`;
+          If the character's emotional state changes significantly, prepend a tag like [EMOTION: grief-stricken] before the response. If the scene moves to a new location, prepend [LOCATION: the ruined temple]. Only include these tags when there's a clear shift — not every message.${matrixSafetyClause}`;
         }
       } else if (activeSession.mode === "group") {
         const groupChars = characters.filter((c) => activeSession.group_character_ids.includes(c.id));
@@ -1216,6 +1251,9 @@ ${c.speaking_style ? `Voice: ${c.speaking_style}` : ""}${rel}`;
           activeSession.group_character_ids.includes(c.id)
         );
         newAiMessages = parseGroupResponse(strippedResult, groupCharsForParse, charName);
+      } else if (isMultiAspect && multiAspectChars.length > 1) {
+        // Lover Matrix: split labeled **Aspect:** turns into separate bubbles
+        newAiMessages = parseGroupResponse(strippedResult, multiAspectChars, charName);
       } else {
         newAiMessages = [{ role: "assistant", content: strippedResult || result, character_name: charName, timestamp: new Date().toISOString() }];
       }
@@ -1647,6 +1685,54 @@ Someone has just addressed you, Serenity. Respond briefly and in character — p
             />
             {activeSession?.mode === "solo" && activeSession?.character_id && (
               <ResonanceField value={resonance.value} label={resonance.label} />
+            )}
+            {activeSession?.mode === "solo" && characters.find(c => c.id === activeSession?.character_id)?._isAnima && (
+              <div className="px-3 py-2 border-b border-primary/10 bg-black/40 backdrop-blur-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary/40">Present</span>
+                  {activeAspects.map((id) => {
+                    const m = ASPECT_META.find(a => a.id === id);
+                    if (!m) return null;
+                    return (
+                      <span key={id} className="font-mono text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1"
+                        style={{ borderColor: `${m.accent}66`, color: m.accent }}>
+                        <span>{m.glyph}</span>{m.name}
+                      </span>
+                    );
+                  })}
+                  <button
+                    onClick={() => setShowAspectPicker(v => !v)}
+                    className="ml-auto font-mono text-[10px] uppercase tracking-[0.15em] px-2.5 py-1 rounded-full border border-primary/30 text-primary/70 hover:text-primary hover:border-primary/60 transition-colors"
+                  >
+                    {showAspectPicker ? "Close" : activeAspects.length > 1 ? "Lover Matrix ✦" : "+ Invite Aspect"}
+                  </button>
+                </div>
+                {showAspectPicker && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {ASPECT_META.map((m) => {
+                      const on = activeAspects.includes(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => toggleAspect(m.id)}
+                          title={m.essence}
+                          className={`font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${on ? "bg-primary/10" : "opacity-60 hover:opacity-100"}`}
+                          style={{ borderColor: on ? m.accent : "rgba(255,255,255,0.12)", color: on ? m.accent : undefined }}
+                        >
+                          <span>{m.glyph}</span>
+                          <span>{m.name}</span>
+                          {on && <span className="text-[9px]">●</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {activeAspects.length > 1 && (
+                  <p className="mt-1.5 font-mono text-[9px] text-primary/30 leading-relaxed">
+                    Multiple aspects share this thread — they respond to you and to each other. Emotional &amp; psychological presence only.
+                  </p>
+                )}
+              </div>
             )}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-2 sm:space-y-4 min-h-0 relative" data-no-swipe data-scroll-preserve style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'var(--tab-bar-height, 60px)' }}>
               <GoToTopButton containerRef={scrollContainerRef} />
