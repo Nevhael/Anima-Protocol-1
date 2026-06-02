@@ -8,7 +8,10 @@ import InventoryItemForm from "./InventoryItemForm";
 const ITEM_TYPES = ["all", "gear", "consumable", "weapon", "armor", "artifact", "misc"];
 const SLOTS = ["none", "head", "chest", "hands", "feet", "weapon", "offhand", "accessory"];
 
+import { useConfirm } from "@/lib/ConfirmDialog";
+
 export default function InventoryManager({ characterId, sessionId, onItemsChange }) {
+  const confirm = useConfirm();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -65,7 +68,12 @@ export default function InventoryManager({ characterId, sessionId, onItemsChange
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!confirm("Delete this item?")) return;
+    const ok = await confirm({
+      title: "Delete this item?",
+      message: "This permanently removes the item from your inventory.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     try {
       await base44.entities.Inventory.delete(itemId);
       setItems(prev => prev.filter(i => i.id !== itemId));

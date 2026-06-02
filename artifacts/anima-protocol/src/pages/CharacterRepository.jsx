@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Search, Sparkles, Heart, Trash2, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import PullToRefreshContainer from "@/components/mobile/PullToRefreshContainer";
 
 export default function CharacterRepository() {
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
   const [selectedChar, setSelectedChar] = useState(null);
@@ -118,6 +120,12 @@ export default function CharacterRepository() {
   const deleteCharacter = async (charId) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
+    const ok = await confirm({
+      title: "Delete this character?",
+      message: "This permanently removes the character and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     try {
       await (char._isAnima
         ? base44.entities.Anima.delete(charId)

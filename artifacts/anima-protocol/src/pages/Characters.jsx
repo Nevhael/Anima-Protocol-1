@@ -8,6 +8,7 @@ import VoiceCloneManager from "@/components/characters/VoiceCloneManager";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/lib/ConfirmDialog";
 
 const CATEGORIES = ["companion", "warrior", "mystic", "scientist", "villain", "hero", "other"];
 const STATUSES = ["online", "standby", "offline"];
@@ -42,6 +43,7 @@ const defaultForm = {
 
 export default function Characters() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [characters, setCharacters] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingChar, setEditingChar] = useState(null);
@@ -80,6 +82,12 @@ export default function Characters() {
   };
 
   const handleDelete = async (id) => {
+    const ok = await confirm({
+      title: "Delete this character?",
+      message: "This permanently removes the character and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setDeletingId(id);
     await base44.entities.Character.delete(id);
     await loadCharacters();
@@ -88,9 +96,7 @@ export default function Characters() {
 
   const handleLongPressStart = (id) => {
     const timer = setTimeout(() => {
-      if (confirm("Delete this character?")) {
-        handleDelete(id);
-      }
+      handleDelete(id);
     }, 500);
     setLongPressTimer(timer);
   };

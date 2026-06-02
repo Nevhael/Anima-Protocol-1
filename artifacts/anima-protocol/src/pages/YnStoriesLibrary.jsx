@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { Trash2, Play, Users, Clock, Search, Loader, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 
 export default function YnStoriesLibrary() {
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [characters, setCharacters] = useState([]);
@@ -40,7 +42,12 @@ export default function YnStoriesLibrary() {
   };
 
   const handleDelete = async (sessionId) => {
-    if (!confirm("Delete this story? This cannot be undone.")) return;
+    const ok = await confirm({
+      title: "Delete this story?",
+      message: "This permanently removes the story and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     
     setDeleting(sessionId);
     try {

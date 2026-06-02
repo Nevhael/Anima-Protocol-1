@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import { BookOpen, Map, Shield, Scroll, Search, Trash2, Plus, X, Loader, Network, ArrowLeft } from "lucide-react";
 import RelationshipTimeline from "@/components/lorebook/RelationshipTimeline";
 
 export default function Wiki() {
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session");
 
@@ -40,11 +42,23 @@ export default function Wiki() {
   };
 
   const handleDeleteLore = async (id) => {
+    const ok = await confirm({
+      title: "Delete this lore entry?",
+      message: "This permanently removes the entry and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     await base44.entities.WorldState.delete(id);
     await loadData();
   };
 
   const handleDeleteLocation = async (id) => {
+    const ok = await confirm({
+      title: "Delete this location?",
+      message: "This permanently removes the location and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     await base44.entities.Location.delete(id);
     await loadData();
   };

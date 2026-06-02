@@ -3,8 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { BookOpen, Search, Trash2, Calendar, User, ArrowLeft } from "lucide-react";
+import { useConfirm } from "@/lib/ConfirmDialog";
 
 export default function Journals() {
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session");
 
@@ -63,6 +65,12 @@ export default function Journals() {
   };
 
   const handleDelete = async (id) => {
+    const ok = await confirm({
+      title: "Delete this journal entry?",
+      message: "This permanently removes the entry and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     await base44.entities.CharacterJournal.delete(id);
     if (selectedJournal?.id === id) setSelectedJournal(null);
     await loadData();

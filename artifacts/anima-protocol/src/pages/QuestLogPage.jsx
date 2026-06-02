@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import { useParams } from "react-router-dom";
 import { Loader, Plus, Zap, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,6 +8,7 @@ import QuestCard from "@/components/quests/QuestCard";
 import QuestForm from "@/components/quests/QuestForm";
 
 export default function QuestLogPage() {
+  const confirm = useConfirm();
   const { sessionId } = useParams();
   const [session, setSession] = useState(null);
   const [quests, setQuests] = useState([]);
@@ -96,7 +98,12 @@ export default function QuestLogPage() {
   };
 
   const handleDeleteQuest = async (questId) => {
-    if (!confirm("Delete this quest?")) return;
+    const ok = await confirm({
+      title: "Delete this quest?",
+      message: "This permanently removes the quest and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     try {
       await base44.entities.Quest.delete(questId);
       setQuests(prev => prev.filter(q => q.id !== questId));

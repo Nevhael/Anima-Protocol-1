@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import { ChevronLeft, Filter, Loader, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import InventoryGrid from "@/components/inventory/InventoryGrid";
@@ -10,6 +11,7 @@ const ITEM_TYPES = ["all", "gear", "weapon", "armor", "consumable", "artifact", 
 const RARITIES = ["all", "common", "uncommon", "rare", "legendary"];
 
 export default function InventoryPanel() {
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session");
   const characterId = searchParams.get("character");
@@ -90,6 +92,12 @@ export default function InventoryPanel() {
   };
 
   const handleDelete = async (itemId) => {
+    const ok = await confirm({
+      title: "Delete this item?",
+      message: "This permanently removes the item from your inventory.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     await base44.entities.Inventory.delete(itemId);
     setItems(prev => prev.filter(i => i.id !== itemId));
     calculateStats(items.filter(i => i.id !== itemId));

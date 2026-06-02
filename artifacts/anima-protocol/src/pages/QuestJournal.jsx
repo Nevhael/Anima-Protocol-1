@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { useConfirm } from "@/lib/ConfirmDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -235,6 +236,7 @@ function QuestRow({ quest, characters, sessions, onStatusChange, onObjectiveTogg
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function QuestJournal() {
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const [quests, setQuests] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -292,6 +294,12 @@ export default function QuestJournal() {
   };
 
   const handleDelete = async (questId) => {
+    const ok = await confirm({
+      title: "Delete this quest?",
+      message: "This permanently removes the quest and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setMutating(true);
     await base44.entities.Quest.delete(questId);
     setQuests(prev => prev.filter(q => q.id !== questId));

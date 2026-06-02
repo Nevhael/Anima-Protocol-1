@@ -14,6 +14,7 @@ import { useSwipeGestures } from "@/hooks/useSwipeGestures";
 import { initializeColorScheme } from "@/lib/colorScheme";
 import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
+import { ConfirmProvider } from "@/lib/ConfirmDialog";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import BottomTabBar from "@/components/layout/BottomTabBar";
 import MobileHeader from "@/components/layout/MobileHeader";
@@ -975,6 +976,7 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
+        <ConfirmProvider>
         <Router>
           <InAppBrowserWarning />
           <TapTargetValidator />
@@ -989,6 +991,7 @@ function App() {
           </div>
         </Router>
         <Toaster />
+        </ConfirmProvider>
       </QueryClientProvider>
     </AuthProvider>
   );
