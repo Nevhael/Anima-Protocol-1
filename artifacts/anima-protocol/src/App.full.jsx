@@ -23,6 +23,7 @@ import { seedCharactersIfNeeded } from "@/lib/seedCharacters";
 // Lazy-loaded pages for code splitting
 const Chat = lazy(() => import("./pages/Chat"));
 const Landing = lazy(() => import("./pages/Landing"));
+const MainHome = lazy(() => import("./pages/MainHome"));
 const NewChat = lazy(() => import("./pages/NewChat"));
 
 // Keep the rest of your app's pages lazy-loaded
@@ -230,8 +231,15 @@ const AuthenticatedApp = () => {
           style={{ paddingBottom: "var(--tab-bar-height, 0px)" }}
         >
           <Routes location={location}>
-            {/* Root redirects to chat */}
-            <Route path="/" element={<Navigate to="/chat" replace />} />
+            {/* Root renders the main home / landing page */}
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <MainHome />
+                </Suspense>
+              }
+            />
             <Route
               path="/landing"
               element={
@@ -966,7 +974,7 @@ const AuthenticatedApp = () => {
           </Routes>
         </motion.div>
       </AnimatePresence>
-      {!['/', '/landing', '/login'].includes(location.pathname) && <BottomTabBar />}
+      {!['/landing', '/login'].includes(location.pathname) && <BottomTabBar />}
     </>
   );
 };

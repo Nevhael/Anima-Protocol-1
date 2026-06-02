@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageSquare, BookOpen, Globe, Grid3x3, X } from "lucide-react";
+import { MessageSquare, BookOpen, Globe, Grid3x3, Home, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
@@ -29,12 +29,14 @@ const ALL_MODULES = [
 ];
 
 const PINNED_TABS = [
+  { path: "/", label: "Home", Icon: Home },
   { path: "/chat", label: "Chat", Icon: MessageSquare },
   { path: "/storyboard", label: "Board", Icon: BookOpen },
   { path: "/worldmap", label: "Map", Icon: Globe },
 ];
 
 function isTabActive(tabPath, pathname) {
+  if (tabPath === "/") return pathname === "/";
   if (tabPath === "/chat") return pathname === "/chat" || pathname.startsWith("/chat/");
   return pathname === tabPath || pathname.startsWith(tabPath + "/");
 }
