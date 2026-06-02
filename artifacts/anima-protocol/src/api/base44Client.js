@@ -21,13 +21,59 @@ function makeId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Apply SDK-style querying: optional equality filters, a sort string
+// ("field" ascending, "-field" descending) and a numeric limit.
+function applyQuery(items, filters, sort, limit) {
+  let result = items;
+
+  if (filters && typeof filters === 'object') {
+    const entries = Object.entries(filters);
+    if (entries.length) {
+      result = result.filter((item) => entries.every(([k, v]) => item[k] === v));
+    }
+  }
+
+  if (typeof sort === 'string' && sort) {
+    const desc = sort.startsWith('-');
+    const field = desc ? sort.slice(1) : sort;
+    result = [...result].sort((a, b) => {
+      const av = a[field];
+      const bv = b[field];
+      if (av === bv) return 0;
+      if (av === undefined || av === null) return 1;
+      if (bv === undefined || bv === null) return -1;
+      let cmp;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        cmp = av - bv;
+      } else {
+        cmp = String(av) < String(bv) ? -1 : 1;
+      }
+      return desc ? -cmp : cmp;
+    });
+  }
+
+  if (typeof limit === 'number' && limit >= 0) {
+    result = result.slice(0, limit);
+  }
+
+  return result;
+}
+
 function entityStore(entityName) {
   return {
-    async list(filters = {}) {
+    // Supports the SDK-style signatures used across the app:
+    //   list()                       → all items
+    //   list("-updated_date", 50)    → sorted + limited
+    //   list({ key: value })         → filtered (back-compat)
+    async list(sortOrFilters, limit) {
       const items = getStore(entityName);
-      return items.filter((item) => {
-        return Object.entries(filters).every(([k, v]) => item[k] === v);
-      });
+      if (typeof sortOrFilters === 'string') {
+        return applyQuery(items, undefined, sortOrFilters, limit);
+      }
+      if (sortOrFilters && typeof sortOrFilters === 'object') {
+        return applyQuery(items, sortOrFilters, undefined, limit);
+      }
+      return applyQuery(items, undefined, undefined, limit);
     },
 
     async get(id) {
@@ -81,8 +127,11 @@ function entityStore(entityName) {
       return newItems;
     },
 
-    async filter(filters = {}) {
-      return this.list(filters);
+    // filter(filters?, sort?, limit?) — SDK-style equality filtering with
+    // optional sort string and numeric limit.
+    async filter(filters = {}, sort, limit) {
+      const items = getStore(entityName);
+      return applyQuery(items, filters, sort, limit);
     },
   };
 }
