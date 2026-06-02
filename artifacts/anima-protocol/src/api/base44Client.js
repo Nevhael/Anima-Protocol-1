@@ -169,6 +169,10 @@ function ensureGuestUser() {
   return user;
 }
 
+const entitiesProxy = new Proxy({}, {
+  get: (_, entityName) => entityStore(entityName),
+});
+
 export const base44 = {
   auth: {
     isAuthenticated: async () => {
@@ -195,9 +199,13 @@ export const base44 = {
     },
   },
 
-  entities: new Proxy({}, {
-    get: (_, entityName) => entityStore(entityName),
-  }),
+  entities: entitiesProxy,
+
+  // Mirror the SDK's service-role accessor. Locally there is no privilege
+  // separation, so it resolves the same localStorage-backed entity store.
+  asServiceRole: {
+    entities: entitiesProxy,
+  },
 
   integrations: {
     Core: {
