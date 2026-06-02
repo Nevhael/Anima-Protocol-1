@@ -191,7 +191,7 @@ export default function MainHome() {
             className="text-2xl sm:text-3xl tracking-[0.35em] font-bold text-cyan-400 uppercase"
             style={{ textShadow: "0 0 10px rgba(0,229,255,0.5)" }}
           >
-            {anima?.name || "Serenity"} <span className="text-cyan-900/50">.AI</span>
+            Anima <span className="text-cyan-900/50">Protocol</span>
           </h1>
           <p className="text-[9px] tracking-[0.3em] text-cyan-800 mt-2 uppercase">// AI COMPANION SYSTEM</p>
         </motion.div>

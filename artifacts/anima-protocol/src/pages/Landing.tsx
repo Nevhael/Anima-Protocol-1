@@ -136,7 +136,7 @@ export default function Landing() {
         </div>
 
         <h1 className="text-3xl tracking-[0.4em] font-bold text-cyan-400 uppercase text-center" style={{ textShadow: '0 0 10px rgba(0,229,255,0.5)' }}>
-          {animaData.name} <span className="text-cyan-900/50">.AI</span>
+          Anima <span className="text-cyan-900/50">Protocol</span>
         </h1>
         <p className="text-[10px] tracking-[0.3em] text-cyan-800 mt-2 uppercase">
           // AI COMPANION SYSTEM
