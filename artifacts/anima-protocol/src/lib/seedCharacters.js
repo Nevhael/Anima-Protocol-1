@@ -5,13 +5,6 @@ import { findCharacterPhoto } from "@/lib/characterPhoto";
 // re-query the web every page load for characters that simply have no match.
 const PHOTO_ATTEMPT_KEY = "anima_photo_attempts_v1";
 
-const SEED_KEY = "anima_characters_seeded_v1";
-// Separate key so the Invincible roster is added once for users who already
-// ran the original seed, while still respecting any characters they delete.
-const INVINCIBLE_SEED_KEY = "anima_seed_invincible_v1";
-// One-time cleanup of duplicates left by the earlier StrictMode seeding race.
-const DEDUP_KEY = "anima_characters_deduped_v1";
-
 // Seed avatars are bundled in /public/seed-avatars and served under the
 // artifact's base path.
 const AV = `${import.meta.env.BASE_URL}seed-avatars/`;
@@ -296,6 +289,13 @@ export function seedCharactersIfNeeded() {
   return seedPromise;
 }
 
+// Reset the per-load seed/backfill locks so that switching accounts in the same
+// session re-evaluates seeding against the newly signed-in account's data.
+export function resetSeedLock() {
+  seedPromise = null;
+  backfillPromise = null;
+}
+
 function getPhotoAttempts() {
   try {
     return new Set(JSON.parse(localStorage.getItem(PHOTO_ATTEMPT_KEY) || "[]"));
@@ -374,70 +374,44 @@ async function doBackfillPhotos() {
   }
 }
 
-// Remove duplicate characters created by the earlier StrictMode race,
-// keeping the earliest entry per name+universe. Runs once.
-async function dedupeCharactersOnce() {
-  if (localStorage.getItem(DEDUP_KEY)) return;
-  try {
-    const all = await base44.entities.Character.list("created_date", 1000);
-    const seen = new Set();
-    const dupes = [];
-    for (const c of all || []) {
-      const key = `${(c.name || "").toLowerCase()}|${(c.universe || "").toLowerCase()}`;
-      if (seen.has(key)) dupes.push(c);
-      else seen.add(key);
-    }
-    for (const d of dupes) {
-      await base44.entities.Character.delete(d.id);
-    }
-    localStorage.setItem(DEDUP_KEY, "1");
-    if (dupes.length) console.log(`[Anima] Removed ${dupes.length} duplicate characters.`);
-  } catch (err) {
-    console.warn("[Anima] Character dedupe failed:", err.message);
-  }
+// Seed the starter roster for a brand-new account. Data is now stored on the
+// server scoped to the signed-in account, so the seed decision is based on
+// server state (does THIS account already have characters?) rather than a
+// per-browser localStorage flag — that way each new account gets its starter
+// characters while accounts with existing/migrated data are left untouched.
+// Race-safety against StrictMode double-invoke is provided by the module-level
+// promise lock in seedCharactersIfNeeded().
+// Stable id for a starter character derived from its universe + name. Using a
+// deterministic id (instead of a server-generated random one) makes seeding
+// idempotent: if two devices sign in to the same fresh account simultaneously
+// and both observe an empty roster, their upserts land on the SAME rows rather
+// than creating duplicate rosters.
+function seedId(char) {
+  const slug = `${char.universe || ""}-${char.name || ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `seed_${slug}`;
 }
 
 async function doSeed() {
-  await dedupeCharactersOnce();
+  try {
+    const existing = await base44.entities.Character.list("-created_date", 1);
+    if (existing && existing.length > 0) return;
 
-  // Fresh install: seed the full roster (Korra + Marvel/Avengers + Invincible).
-  if (!localStorage.getItem(SEED_KEY)) {
-    try {
-      const existing = await base44.entities.Character.list("-created_date", 5);
-      if (existing && existing.length > 0) {
-        localStorage.setItem(SEED_KEY, "1");
-      } else {
-        const allCharacters = [...KORRA_CHARACTERS, ...MARVEL_CHARACTERS, ...INVINCIBLE_CHARACTERS];
-        for (const char of allCharacters) {
-          await base44.entities.Character.create(char);
-        }
-        localStorage.setItem(SEED_KEY, "1");
-        localStorage.setItem(INVINCIBLE_SEED_KEY, "1");
-        console.log(`[Anima] Seeded ${allCharacters.length} characters.`);
-      }
-    } catch (err) {
-      console.warn("[Anima] Character seed failed:", err.message);
+    const allCharacters = [
+      ...KORRA_CHARACTERS,
+      ...MARVEL_CHARACTERS,
+      ...INVINCIBLE_CHARACTERS,
+    ];
+    // Upsert by deterministic id so concurrent seeds converge instead of
+    // duplicating (PUT /:entity/:id is an upsert on the server).
+    for (const char of allCharacters) {
+      const id = seedId(char);
+      await base44.entities.Character.update(id, { ...char, id });
     }
-  }
-
-  // Existing users who seeded before Invincible existed: add that roster once,
-  // skipping any names already present. Deletions are respected because this
-  // runs a single time (guarded by INVINCIBLE_SEED_KEY).
-  if (!localStorage.getItem(INVINCIBLE_SEED_KEY)) {
-    try {
-      const all = await base44.entities.Character.list("-created_date", 1000);
-      const names = new Set((all || []).map((c) => (c.name || "").toLowerCase()));
-      let added = 0;
-      for (const char of INVINCIBLE_CHARACTERS) {
-        if (!names.has(char.name.toLowerCase())) {
-          await base44.entities.Character.create(char);
-          added++;
-        }
-      }
-      localStorage.setItem(INVINCIBLE_SEED_KEY, "1");
-      if (added) console.log(`[Anima] Seeded ${added} Invincible characters.`);
-    } catch (err) {
-      console.warn("[Anima] Invincible seed failed:", err.message);
-    }
+    console.log(`[Anima] Seeded ${allCharacters.length} characters.`);
+  } catch (err) {
+    console.warn("[Anima] Character seed failed:", err.message);
   }
 }

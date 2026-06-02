@@ -5,18 +5,19 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
-import { useUser, useClerk } from '@clerk/react';
+import { useUser, useClerk, useAuth as useClerkAuth } from '@clerk/react';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { base44, setAuthTokenGetter } from '@/api/base44Client';
 
 const AuthContext = createContext();
 
 // Bridges Clerk's session into the app's existing auth interface. Identity is
-// owned by Clerk; the local (base44/localStorage) record holds profile and
-// settings data the rest of the app already reads via base44.auth.me().
+// owned by Clerk; the server profile record (reached via base44.auth.me())
+// holds the profile and settings data the rest of the app already reads.
 export const AuthProvider = ({ children }) => {
   const { user: clerkUser, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
+  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
@@ -24,30 +25,54 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings] = useState(false);
   const [appPublicSettings] = useState(null);
 
+  // Make the Clerk session token available to the non-React data layer so
+  // every entity/profile request can identify the user (in dev and prod).
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+  }, [getToken]);
+
   useEffect(() => {
     if (!isLoaded) return;
+    let cancelled = false;
+
     if (isSignedIn && clerkUser) {
       const identity = {
         id: clerkUser.id,
         email: clerkUser.primaryEmailAddress?.emailAddress || '',
-        full_name:
-          clerkUser.fullName || clerkUser.username || 'Seeker',
+        full_name: clerkUser.fullName || clerkUser.username || 'Seeker',
       };
-      const merged = base44.auth.syncIdentity(identity);
-      if (!merged.display_name) {
-        const preferred =
-          clerkUser.firstName || clerkUser.fullName || clerkUser.username;
-        if (preferred) {
-          merged.display_name = preferred;
-          base44.auth.syncIdentity({ display_name: preferred });
+      base44.auth.syncIdentity(identity);
+
+      (async () => {
+        try {
+          let profile = await base44.auth.me();
+          if (!profile.display_name) {
+            const preferred =
+              clerkUser.firstName || clerkUser.fullName || clerkUser.username;
+            if (preferred) {
+              profile = await base44.auth.updateMe({ display_name: preferred });
+            }
+          }
+          if (!cancelled) {
+            setUser(profile);
+            setAuthError(null);
+          }
+        } catch (err) {
+          console.warn('Failed to load profile:', err);
+          if (!cancelled) {
+            setUser(base44.auth.syncIdentity(identity));
+            setAuthError(null);
+          }
         }
-      }
-      setUser(merged);
-      setAuthError(null);
+      })();
     } else {
       base44.auth.clearSession();
       setUser(null);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, isSignedIn, clerkUser?.id]);
 
   const isAuthenticated = !!isSignedIn;

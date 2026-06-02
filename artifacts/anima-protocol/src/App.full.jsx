@@ -29,7 +29,7 @@ import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import BottomTabBar from "@/components/layout/BottomTabBar";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { useKeyboardAvoidance } from "@/hooks/useKeyboardAvoidance";
-import { seedCharactersIfNeeded } from "@/lib/seedCharacters";
+import { bootstrapUserData } from "@/lib/syncBootstrap";
 
 // Lazy-loaded pages for code splitting
 const Chat = lazy(() => import("./pages/Chat"));
@@ -353,6 +353,7 @@ const AuthenticatedApp = () => {
     authError,
     navigateToLogin,
     isAuthenticated,
+    user,
   } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -365,8 +366,16 @@ const AuthenticatedApp = () => {
   // Initialize color scheme on mount
   useEffect(() => {
     initializeColorScheme();
-    seedCharactersIfNeeded();
   }, []);
+
+  // Once a Clerk session exists, migrate any pre-sync local data up to the
+  // account (once) and seed starter characters for new accounts. Gated on the
+  // resolved user id so it runs per-account and only after the token is ready.
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      bootstrapUserData(user.id);
+    }
+  }, [isAuthenticated, user?.id]);
 
   // Track route changes
   useEffect(() => {

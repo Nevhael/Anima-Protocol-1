@@ -2,7 +2,10 @@ import { Router } from "express";
 import { rateLimit } from "../lib/rateLimit";
 
 const router = Router();
-router.use(rateLimit);
+// Scope the limiter to this router's own path. This router is mounted without a
+// path prefix, so an unscoped `router.use(rateLimit)` would run for every /api
+// request passing through (e.g. /api/store/*) and exhaust the shared IP budget.
+router.use("/character-image", rateLimit);
 
 const WIKI_HEADERS = { "User-Agent": "AnimaProtocol/1.0 (character portrait lookup)" };
 
