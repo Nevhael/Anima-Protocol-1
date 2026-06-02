@@ -152,14 +152,16 @@ function setAuthUser(user) {
   else sessionStorage.removeItem(AUTH_KEY);
 }
 
-// Create a guest user automatically so the app boots without a login flow.
+// Ensure a local profile record exists for the signed-in user. Identity is
+// owned by Clerk; this is the local (per-browser) profile/settings store that
+// the rest of the app reads via base44.auth.me().
 function ensureGuestUser() {
   let user = getAuthUser();
   if (!user) {
     user = {
       id: 'guest',
       email: 'guest@anima.local',
-      full_name: 'Guest Explorer',
+      full_name: 'Seeker',
       role: 'User',
       selected_mode: 'companion',
       created_date: new Date().toISOString(),
@@ -179,8 +181,18 @@ export const base44 = {
       ensureGuestUser();
       return true;
     },
-    redirectToLogin: () => {},
+    redirectToLogin: () => {
+      window.location.href = '/sign-in';
+    },
     me: async () => ensureGuestUser(),
+    // Merge Clerk identity (id, email, name) into the local profile record.
+    // Called by AuthContext when a Clerk session becomes available.
+    syncIdentity: (identity) => {
+      const user = { ...ensureGuestUser(), ...identity };
+      setAuthUser(user);
+      return user;
+    },
+    clearSession: () => setAuthUser(null),
     updateMe: async (data) => {
       const user = ensureGuestUser();
       const updated = { ...user, ...data };
@@ -193,9 +205,10 @@ export const base44 = {
       setAuthUser(updated);
       return updated;
     },
-    logout: async (redirectPath) => {
+    // Identity/session redirects are owned by Clerk (see AuthContext.logout).
+    // This only clears the local profile cache.
+    logout: async () => {
       setAuthUser(null);
-      window.location.href = redirectPath || '/';
     },
   },
 

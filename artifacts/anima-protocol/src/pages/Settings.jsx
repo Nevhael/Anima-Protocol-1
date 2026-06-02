@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import {
   ArrowLeft, User, Bot, Sliders, LogOut, Shield, Save, Trash2, AlertTriangle, Loader, Volume2, HelpCircle, Scale, ExternalLink
 } from "lucide-react";
@@ -36,6 +37,7 @@ const defaultPrefs = {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [section, setSection] = useState(SECTION.ACCOUNT);
   const [user, setUser] = useState(null);
   const [prefs, setPrefs] = useState(defaultPrefs);
@@ -120,9 +122,9 @@ export default function Settings() {
         ...lore.map((l) => base44.entities.WorldState.delete(l.id)),
         ...quests.map((q) => base44.entities.Quest.delete(q.id)),
       ]);
-      // Clear local storage and logout
+      // Clear local storage and sign out via Clerk
       localStorage.clear();
-      base44.auth.logout("/");
+      await logout();
     } catch (err) {
       console.error("Error deleting account:", err);
       setDeletingAccount(false);
@@ -180,7 +182,7 @@ export default function Settings() {
     }
   };
 
-  const handleLogout = () => base44.auth.logout("/");
+  const handleLogout = () => logout();
   const setPref = (key, val) => setPrefs((p) => ({ ...p, [key]: val }));
 
   const handleAssignVoices = async () => {

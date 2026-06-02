@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
 import {
   BrowserRouter as Router,
@@ -9,6 +9,15 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import {
+  ClerkProvider,
+  SignIn,
+  SignUp,
+  Show,
+  useClerk,
+} from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { dark } from "@clerk/themes";
 import { Suspense, lazy, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSwipeGestures } from "@/hooks/useSwipeGestures";
@@ -162,9 +171,189 @@ const PageLoader = () => (
   </div>
 );
 
+// ── Clerk auth wiring ─────────────────────────────────────────────────────
+// BASE_URL is "/" for this artifact, so basePath is "" and the sign-in/up
+// routes live at the domain root. Canonical Clerk constants are copied verbatim
+// from the clerk-auth skill; only the router glue is adapted to react-router.
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+
+function stripBase(path) {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || "/"
+    : path;
+}
+
+if (!clerkPubKey) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+}
+
+const clerkAppearance = {
+  theme: dark,
+  cssLayerName: "clerk",
+  options: {
+    logoPlacement: "inside",
+    logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    socialButtonsVariant: "blockButton",
+  },
+  variables: {
+    colorPrimary: "#22d3ee",
+    colorForeground: "#a5f3fc",
+    colorMutedForeground: "#5ea9b5",
+    colorDanger: "#f87171",
+    colorBackground: "#090912",
+    colorInput: "#0c1420",
+    colorInputForeground: "#a5f3fc",
+    colorNeutral: "#22d3ee",
+    fontFamily: "'Rajdhani', sans-serif",
+    borderRadius: "0.25rem",
+  },
+  elements: {
+    rootBox: "w-full flex justify-center",
+    cardBox:
+      "bg-[#090912] border border-cyan-400/30 shadow-[0_0_40px_rgba(34,211,238,0.15)] rounded-md w-[420px] max-w-full overflow-hidden",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    headerTitle: "!text-cyan-200 tracking-wide",
+    headerSubtitle: "!text-cyan-400/60",
+    socialButtonsBlockButton:
+      "!border-cyan-400/30 !bg-cyan-400/5 hover:!bg-cyan-400/10",
+    socialButtonsBlockButtonText: "!text-cyan-100",
+    dividerLine: "!bg-cyan-400/20",
+    dividerText: "!text-cyan-400/50",
+    formFieldLabel: "!text-cyan-300/80",
+    formFieldInput: "!bg-[#0c1420] !border-cyan-400/30 !text-cyan-100",
+    formButtonPrimary:
+      "!bg-cyan-400/15 !text-cyan-100 !border !border-cyan-400/50 hover:!bg-cyan-400/25",
+    footerActionText: "!text-cyan-400/50",
+    footerActionLink: "!text-cyan-300 hover:!text-cyan-200",
+    identityPreviewEditButton: "!text-cyan-300",
+    otpCodeFieldInput: "!text-cyan-100 !border-cyan-400/30",
+  },
+};
+
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const queryClient = useQueryClient();
+  const prevUserIdRef = useRef(undefined);
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (
+        prevUserIdRef.current !== undefined &&
+        prevUserIdRef.current !== userId
+      ) {
+        queryClient.clear();
+      }
+      prevUserIdRef.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, queryClient]);
+  return null;
+}
+
+function SignInPage() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        fallbackRedirectUrl={basePath || "/"}
+      />
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        fallbackRedirectUrl={basePath || "/"}
+      />
+    </div>
+  );
+}
+
+// Public landing for signed-out users; full app home for signed-in users.
+function HomeGate() {
+  return (
+    <>
+      <Show when="signed-in">
+        <Suspense fallback={<PageLoader />}>
+          <MainHome />
+        </Suspense>
+      </Show>
+      <Show when="signed-out">
+        <Suspense fallback={<PageLoader />}>
+          <Landing />
+        </Suspense>
+      </Show>
+    </>
+  );
+}
+
+function ClerkProviderWithRoutes({ children }) {
+  const navigate = useNavigate();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: {
+          start: {
+            title: "Re-enter the Protocol",
+            subtitle: "Sign in to reconnect with your companions",
+          },
+        },
+        signUp: {
+          start: {
+            title: "Begin the Protocol",
+            subtitle: "Create your account to awaken your companions",
+          },
+        },
+      }}
+      routerPush={(to) => navigate(stripBase(to))}
+      routerReplace={(to) => navigate(stripBase(to), { replace: true })}
+    >
+      <ClerkQueryClientCacheInvalidator />
+      {children}
+    </ClerkProvider>
+  );
+}
+
+// Public routes that signed-out users may reach without authentication.
+const PUBLIC_PREFIXES = [
+  "/landing",
+  "/login",
+  "/sign-in",
+  "/sign-up",
+  "/terms",
+  "/privacy-policy",
+  "/disclaimer",
+];
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } =
-    useAuth();
+  const {
+    isLoadingAuth,
+    isLoadingPublicSettings,
+    authError,
+    navigateToLogin,
+    isAuthenticated,
+  } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -216,10 +405,32 @@ const AuthenticatedApp = () => {
     }
   }
 
+  // Wait for Clerk to resolve the session before deciding what to show.
+  if (isLoadingAuth) {
+    return <PageLoader />;
+  }
+
+  // Gate protected routes: signed-out users are sent to the public Landing.
+  const pathname = location.pathname;
+  const isPublicPath =
+    pathname === "/" ||
+    PUBLIC_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(p + "/"),
+    );
+  if (!isAuthenticated && !isPublicPath) {
+    return <Navigate to="/" replace />;
+  }
+
+  const showChrome =
+    isAuthenticated &&
+    !["/landing", "/login"].includes(pathname) &&
+    !pathname.startsWith("/sign-in") &&
+    !pathname.startsWith("/sign-up");
+
   return (
     <>
-      <AIDisclaimerModal onAccept={() => {}} />
-      <MobileHeader />
+      {showChrome && <AIDisclaimerModal onAccept={() => {}} />}
+      {showChrome && <MobileHeader />}
       <AnimatePresence mode="wait">
         <motion.div
           key={location.pathname.split("/")[1] || "home"}
@@ -232,15 +443,10 @@ const AuthenticatedApp = () => {
           style={{ paddingBottom: "var(--tab-bar-height, 0px)" }}
         >
           <Routes location={location}>
-            {/* Root renders the main home / landing page */}
-            <Route
-              path="/"
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <MainHome />
-                </Suspense>
-              }
-            />
+            {/* Root: signed-out -> Landing, signed-in -> MainHome */}
+            <Route path="/" element={<HomeGate />} />
+            <Route path="/sign-in/*" element={<SignInPage />} />
+            <Route path="/sign-up/*" element={<SignUpPage />} />
             <Route
               path="/landing"
               element={
@@ -968,29 +1174,32 @@ const AuthenticatedApp = () => {
           </Routes>
         </motion.div>
       </AnimatePresence>
-      {!['/landing', '/login'].includes(location.pathname) && <BottomTabBar />}
+      {showChrome && <BottomTabBar />}
     </>
   );
 };
 
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <ConfirmProvider>
-        <Router>
-          <InAppBrowserWarning />
-          <TapTargetValidator />
-          <div
-            className="flex flex-col h-[100dvh]"
-            style={{
-              paddingTop: "env(safe-area-inset-top, 0px)",
-              paddingBottom: "env(safe-area-inset-bottom, 0px)",
-            }}
-          >
-            <AuthenticatedApp />
-          </div>
-        </Router>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <ClerkProviderWithRoutes>
+          <AuthProvider>
+            <ConfirmProvider>
+              <InAppBrowserWarning />
+              <TapTargetValidator />
+              <div
+                className="flex flex-col h-[100dvh]"
+                style={{
+                  paddingTop: "env(safe-area-inset-top, 0px)",
+                  paddingBottom: "env(safe-area-inset-bottom, 0px)",
+                }}
+              >
+                <AuthenticatedApp />
+              </div>
+            </ConfirmProvider>
+          </AuthProvider>
+        </ClerkProviderWithRoutes>
         <Toaster />
         <SonnerToaster
           theme="dark"
@@ -1005,9 +1214,8 @@ function App() {
             },
           }}
         />
-        </ConfirmProvider>
-      </QueryClientProvider>
-    </AuthProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
 

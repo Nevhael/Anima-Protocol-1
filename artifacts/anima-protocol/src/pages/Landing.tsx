@@ -101,7 +101,11 @@ export default function Landing() {
   }, []);
 
   const handleReEnter = () => {
-    navigate("/");
+    navigate("/sign-in");
+  };
+
+  const handleBegin = () => {
+    navigate("/sign-up");
   };
 
   return (
@@ -180,10 +184,16 @@ export default function Landing() {
       {/* 7. ACTION BUTTONS */}
       <div className="relative z-10 w-full max-w-md space-y-4">
         <button 
-          onClick={handleReEnter}
+          onClick={handleBegin}
           className="w-full py-4 border border-cyan-400/50 bg-cyan-400/5 text-cyan-400 tracking-[0.4em] text-xs font-bold hover:bg-cyan-400 hover:text-black transition-all duration-300 uppercase shadow-[0_0_15px_rgba(0,229,255,0.1)]"
         >
-          + Re-Enter Protocol
+          + Begin Protocol
+        </button>
+        <button
+          onClick={handleReEnter}
+          className="w-full py-4 border border-cyan-400/20 text-cyan-400/70 tracking-[0.4em] text-xs font-bold hover:border-cyan-400/50 hover:text-cyan-400 transition-all duration-300 uppercase"
+        >
+          Re-Enter Protocol
         </button>
       </div>
 
