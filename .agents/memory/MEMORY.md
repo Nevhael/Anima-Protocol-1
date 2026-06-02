@@ -6,3 +6,4 @@
 - [Anima Clerk auth bridge](anima-clerk-auth.md) — Clerk owns identity/session, base44 localStorage holds profile; HomeGate at "/", signed-out→Landing; showChrome gates header/tabs/disclaimer.
 - [api-server rate-limit leak](api-server-ratelimit-leak.md) — path-less mounted sub-routers' top-level router.use(rateLimit) runs for ALL /api requests (429s on /api/store); scope it to the router's own paths.
 - [lib/db decl rebuild for typecheck](db-decl-rebuild-for-typecheck.md) — after schema edits, api-server typecheck reads stale lib/db/dist .d.ts ("no exported member"); run `cd lib/db && npx tsc -b` first.
+- [Anima Undo/delete-flow tests](anima-undo-tests.md) — real base44 hangs in vitest (no token getter); mock base44 in-memory + extract Chat page handlers to DI functions to test.

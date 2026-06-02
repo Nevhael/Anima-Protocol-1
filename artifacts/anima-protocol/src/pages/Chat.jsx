@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConfirm } from "@/lib/ConfirmDialog";
-import { deleteWithUndo, deleteArrayItemWithUndo } from "@/lib/undoableDelete";
+import { deleteSessionFlow, deleteMessageFlow } from "@/lib/chatDeleteHandlers";
 import Sidebar from "@/components/layout/Sidebar";
 import WelcomeScreen from "@/components/chat/WelcomeScreen";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -597,22 +597,8 @@ export default function Chat() {
     setShowMobileMenu(false);
   };
 
-  const handleDeleteSession = async (id) => {
-    const ok = await confirm({
-      title: "Delete this chat session?",
-      message: "You'll have a few seconds to undo this.",
-      confirmLabel: "Delete",
-    });
-    if (!ok) return;
-    const item = sessions.find((s) => s.id === id);
-    if (sessionId === id) navigate("/");
-    await deleteWithUndo({
-      entity: "ChatSession",
-      item,
-      label: "Chat session",
-      onChange: loadSessions,
-    });
-  };
+  const handleDeleteSession = (id) =>
+    deleteSessionFlow(id, { confirm, sessions, sessionId, navigate, loadSessions });
 
   const handleApplyTag = (tag) => { console.log("Tag:", tag); };
 
@@ -630,27 +616,8 @@ export default function Chat() {
     setActiveSession((prev) => ({ ...prev, messages: rewoundMessages, last_message: rewoundMessages[rewoundMessages.length - 1]?.content.slice(0, 60) || "" }));
   };
 
-  const handleDeleteMessage = async (idx) => {
-    if (!activeSession) return;
-    const sessionId = activeSession.id;
-    await deleteArrayItemWithUndo({
-      entity: "ChatSession",
-      recordId: sessionId,
-      field: "messages",
-      index: idx,
-      label: "Message",
-      onChange: async () => {
-        const fresh = await base44.entities.ChatSession.get(sessionId);
-        if (fresh) {
-          setActiveSession((prev) =>
-            prev && prev.id === sessionId
-              ? { ...prev, messages: fresh.messages || [] }
-              : prev
-          );
-        }
-      },
-    });
-  };
+  const handleDeleteMessage = (idx) =>
+    deleteMessageFlow(idx, { activeSession, setActiveSession });
 
   const handleEditMessage = async (idx, newText) => {
     if (!activeSession) return;
