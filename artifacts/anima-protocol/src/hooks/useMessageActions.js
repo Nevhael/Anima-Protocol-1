@@ -30,6 +30,13 @@ export function useMessageActions({ activeSession, setActiveSession, isLoading, 
 
   const handleRegenerateMessage = async (messageIndex) => {
     if (!activeSession || isLoading) return;
+    const ok = await confirm({
+      heading: "Regenerate",
+      title: "Regenerate this response?",
+      message: "This discards this reply and anything after it, then writes a new one.",
+      confirmLabel: "Regenerate",
+    });
+    if (!ok) return;
     const messagesUpToBefore = (activeSession.messages || []).slice(0, messageIndex);
     const lastUserMsg = [...messagesUpToBefore].reverse().find(m => m.role === 'user');
     await base44.entities.ChatSession.update(activeSession.id, { messages: messagesUpToBefore });

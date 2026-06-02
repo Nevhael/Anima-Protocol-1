@@ -618,6 +618,13 @@ export default function Chat() {
 
   const handleRewindToMessage = async (messageIndex) => {
     if (!activeSession) return;
+    const ok = await confirm({
+      heading: "Rewind",
+      title: "Rewind to this message?",
+      message: "This permanently removes every message after this point.",
+      confirmLabel: "Rewind",
+    });
+    if (!ok) return;
     const rewoundMessages = (activeSession.messages || []).slice(0, messageIndex + 1);
     await base44.entities.ChatSession.update(activeSession.id, { messages: rewoundMessages, last_message: rewoundMessages[rewoundMessages.length - 1]?.content.slice(0, 60) || "" });
     setActiveSession((prev) => ({ ...prev, messages: rewoundMessages, last_message: rewoundMessages[rewoundMessages.length - 1]?.content.slice(0, 60) || "" }));
@@ -639,6 +646,13 @@ export default function Chat() {
 
   const handleRegenerateMessage = async (idx) => {
     if (!activeSession || isLoading) return;
+    const ok = await confirm({
+      heading: "Regenerate",
+      title: "Regenerate this response?",
+      message: "This discards this reply and anything after it, then writes a new one.",
+      confirmLabel: "Regenerate",
+    });
+    if (!ok) return;
     const before = (activeSession.messages || []).slice(0, idx);
     const lastUser = [...before].reverse().find(m => m.role === 'user');
     await base44.entities.ChatSession.update(activeSession.id, { messages: before });
