@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConfirm } from "@/lib/ConfirmDialog";
 import { deleteSessionFlow, deleteMessageFlow } from "@/lib/chatDeleteHandlers";
+import { rewindToMessageFlow, regenerateMessageFlow } from "@/lib/chatRewindHandlers";
 import Sidebar from "@/components/layout/Sidebar";
 import WelcomeScreen from "@/components/chat/WelcomeScreen";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -602,19 +603,8 @@ export default function Chat() {
 
   const handleApplyTag = (tag) => { console.log("Tag:", tag); };
 
-  const handleRewindToMessage = async (messageIndex) => {
-    if (!activeSession) return;
-    const ok = await confirm({
-      heading: "Rewind",
-      title: "Rewind to this message?",
-      message: "This permanently removes every message after this point.",
-      confirmLabel: "Rewind",
-    });
-    if (!ok) return;
-    const rewoundMessages = (activeSession.messages || []).slice(0, messageIndex + 1);
-    await base44.entities.ChatSession.update(activeSession.id, { messages: rewoundMessages, last_message: rewoundMessages[rewoundMessages.length - 1]?.content.slice(0, 60) || "" });
-    setActiveSession((prev) => ({ ...prev, messages: rewoundMessages, last_message: rewoundMessages[rewoundMessages.length - 1]?.content.slice(0, 60) || "" }));
-  };
+  const handleRewindToMessage = (messageIndex) =>
+    rewindToMessageFlow(messageIndex, { confirm, activeSession, setActiveSession });
 
   const handleDeleteMessage = (idx) =>
     deleteMessageFlow(idx, { activeSession, setActiveSession });
@@ -626,21 +616,14 @@ export default function Chat() {
     setActiveSession(prev => ({ ...prev, messages: updated }));
   };
 
-  const handleRegenerateMessage = async (idx) => {
-    if (!activeSession || isLoading) return;
-    const ok = await confirm({
-      heading: "Regenerate",
-      title: "Regenerate this response?",
-      message: "This discards this reply and anything after it, then writes a new one.",
-      confirmLabel: "Regenerate",
+  const handleRegenerateMessage = (idx) =>
+    regenerateMessageFlow(idx, {
+      confirm,
+      activeSession,
+      isLoading,
+      setActiveSession,
+      sendMessage: handleSendMessage,
     });
-    if (!ok) return;
-    const before = (activeSession.messages || []).slice(0, idx);
-    const lastUser = [...before].reverse().find(m => m.role === 'user');
-    await base44.entities.ChatSession.update(activeSession.id, { messages: before });
-    setActiveSession(prev => ({ ...prev, messages: before }));
-    if (lastUser) await handleSendMessage(lastUser.content);
-  };
 
   const handleChoiceMade = async (choice) => {
     if (!activeSession) return;
