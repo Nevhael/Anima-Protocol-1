@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConfirm } from "@/lib/ConfirmDialog";
-import { deleteWithUndo } from "@/lib/undoableDelete";
+import { deleteWithUndo, deleteArrayItemWithUndo } from "@/lib/undoableDelete";
 import Sidebar from "@/components/layout/Sidebar";
 import WelcomeScreen from "@/components/chat/WelcomeScreen";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -632,9 +632,24 @@ export default function Chat() {
 
   const handleDeleteMessage = async (idx) => {
     if (!activeSession) return;
-    const updated = (activeSession.messages || []).filter((_, i) => i !== idx);
-    await base44.entities.ChatSession.update(activeSession.id, { messages: updated });
-    setActiveSession(prev => ({ ...prev, messages: updated }));
+    const sessionId = activeSession.id;
+    await deleteArrayItemWithUndo({
+      entity: "ChatSession",
+      recordId: sessionId,
+      field: "messages",
+      index: idx,
+      label: "Message",
+      onChange: async () => {
+        const fresh = await base44.entities.ChatSession.get(sessionId);
+        if (fresh) {
+          setActiveSession((prev) =>
+            prev && prev.id === sessionId
+              ? { ...prev, messages: fresh.messages || [] }
+              : prev
+          );
+        }
+      },
+    });
   };
 
   const handleEditMessage = async (idx, newText) => {
