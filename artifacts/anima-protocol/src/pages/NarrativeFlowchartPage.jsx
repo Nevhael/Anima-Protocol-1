@@ -3,6 +3,7 @@ import NarrativeFlowchart from "@/components/branching/NarrativeFlowchart";
 import CharacterVoiceConfig from "@/components/voice/CharacterVoiceConfig";
 import { ChevronLeft, Volume2, GitBranch } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function NarrativeFlowchartPage() {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,7 @@ export default function NarrativeFlowchartPage() {
 
   const handleFork = (snapshot) => {
     // Trigger fork creation
-    window.alert(`Fork from: ${snapshot.branch_name}`);
+    toast(`Fork from: ${snapshot.branch_name}`);
   };
 
   return (

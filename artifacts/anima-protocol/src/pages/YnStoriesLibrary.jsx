@@ -4,6 +4,7 @@ import { useConfirm } from "@/lib/ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { Trash2, Play, Users, Clock, Search, Loader, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 export default function YnStoriesLibrary() {
   const confirm = useConfirm();
@@ -55,7 +56,7 @@ export default function YnStoriesLibrary() {
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     } catch (err) {
       console.error("Failed to delete session:", err);
-      alert("Failed to delete session");
+      toast.error("Failed to delete session");
     } finally {
       setDeleting(null);
     }

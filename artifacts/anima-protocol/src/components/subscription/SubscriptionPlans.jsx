@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import SubscriptionCard from "./SubscriptionCard";
 
 const PLANS = [
@@ -69,7 +70,7 @@ export default function SubscriptionPlans() {
       }
     } catch (err) {
       console.error("Checkout error:", err);
-      alert("Failed to start checkout. Please try again.");
+      toast.error("Failed to start checkout. Please try again.");
     } finally {
       setCheckoutLoading(false);
     }

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { ArrowLeft, Calendar, Cloud, Wind, Flame, Snowflake, Sparkles, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 const SEASONS = {
   spring: { icon: Wind, color: "text-green-400", desc: "Awakening • Growth • Renewal" },
@@ -67,7 +68,7 @@ export default function WorldCalendar() {
       });
       if (result?.data?.suggestions) {
         // Show suggestions in a list or modal
-        alert(`Generated ${result.data.suggestions.length} event suggestions`);
+        toast.success(`Generated ${result.data.suggestions.length} event suggestions`);
       }
     } catch (err) {
       console.error("Error generating events:", err);

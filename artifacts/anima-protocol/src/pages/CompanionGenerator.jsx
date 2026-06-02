@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { autoAssignCharacterPhoto } from "@/lib/seedCharacters";
 import { Wand2, Copy, Check, AlertCircle, Loader } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 export default function CompanionGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -60,7 +61,7 @@ export default function CompanionGenerator() {
 
       setCompanion(null);
       setPrompt("");
-      alert(`✨ ${companion.name} has been created! Start a new chat session to meet them.`);
+      toast.success(`✨ ${companion.name} has been created! Start a new chat session to meet them.`);
     } catch (err) {
       setError(err.message || "Failed to create companion");
     } finally {
