@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { motion } from "framer-motion";
+import titleBg from "@assets/895CF63C-F126-4D27-9DB4-C43E632DC542_1780413192391.png";
 import {
   Heart, Moon, Zap, Pen, Sparkles, MessageSquare, Plus,
   Calendar, BookOpen, Settings, ChevronRight, Users,
@@ -169,6 +170,11 @@ export default function MainHome() {
 
   return (
     <div className="relative h-full overflow-y-auto bg-[#050505] scanline">
+      <div
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: `url(${titleBg})` }}
+      />
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#050505]/75 via-[#050505]/45 to-[#050505]/90 pointer-events-none" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-8">
