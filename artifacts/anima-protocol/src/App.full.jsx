@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
 import {
@@ -991,6 +992,19 @@ function App() {
           </div>
         </Router>
         <Toaster />
+        <SonnerToaster
+          theme="dark"
+          position="bottom-center"
+          toastOptions={{
+            classNames: {
+              toast:
+                "!bg-[#090912] !border !border-primary/30 !text-primary/90 !rounded-none !shadow-[0_0_30px_rgba(34,211,238,0.15)] !font-mono",
+              description: "!text-primary/50 !text-xs",
+              actionButton:
+                "!bg-primary/15 !text-primary !border !border-primary/40 !rounded-none !font-mono !text-[10px] !tracking-[0.2em] !uppercase",
+            },
+          }}
+        />
         </ConfirmProvider>
       </QueryClientProvider>
     </AuthProvider>

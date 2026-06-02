@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConfirm } from "@/lib/ConfirmDialog";
+import { deleteWithUndo } from "@/lib/undoableDelete";
 import { ChevronLeft, Filter, Loader, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import InventoryGrid from "@/components/inventory/InventoryGrid";
@@ -94,14 +95,18 @@ export default function InventoryPanel() {
   const handleDelete = async (itemId) => {
     const ok = await confirm({
       title: "Delete this item?",
-      message: "This permanently removes the item from your inventory.",
+      message: "You'll have a few seconds to undo this.",
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    await base44.entities.Inventory.delete(itemId);
-    setItems(prev => prev.filter(i => i.id !== itemId));
-    calculateStats(items.filter(i => i.id !== itemId));
+    const item = items.find((i) => i.id === itemId);
     setSelectedItem(null);
+    await deleteWithUndo({
+      entity: "Inventory",
+      item,
+      label: "Item",
+      onChange: loadInventory,
+    });
   };
 
   const filteredItems = items.filter(item => {

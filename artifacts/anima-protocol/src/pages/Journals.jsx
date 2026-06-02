@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { BookOpen, Search, Trash2, Calendar, User, ArrowLeft } from "lucide-react";
 import { useConfirm } from "@/lib/ConfirmDialog";
+import { deleteWithUndo } from "@/lib/undoableDelete";
 
 export default function Journals() {
   const confirm = useConfirm();
@@ -67,13 +68,18 @@ export default function Journals() {
   const handleDelete = async (id) => {
     const ok = await confirm({
       title: "Delete this journal entry?",
-      message: "This permanently removes the entry and cannot be undone.",
+      message: "You'll have a few seconds to undo this.",
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    await base44.entities.CharacterJournal.delete(id);
+    const item = journals.find((j) => j.id === id);
     if (selectedJournal?.id === id) setSelectedJournal(null);
-    await loadData();
+    await deleteWithUndo({
+      entity: "CharacterJournal",
+      item,
+      label: "Journal entry",
+      onChange: loadData,
+    });
   };
 
   const emotionColors = {

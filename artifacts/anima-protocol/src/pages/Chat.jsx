@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useConfirm } from "@/lib/ConfirmDialog";
+import { deleteWithUndo } from "@/lib/undoableDelete";
 import Sidebar from "@/components/layout/Sidebar";
 import WelcomeScreen from "@/components/chat/WelcomeScreen";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -599,13 +600,18 @@ export default function Chat() {
   const handleDeleteSession = async (id) => {
     const ok = await confirm({
       title: "Delete this chat session?",
-      message: "This permanently removes the conversation and cannot be undone.",
+      message: "You'll have a few seconds to undo this.",
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    await base44.entities.ChatSession.delete(id);
+    const item = sessions.find((s) => s.id === id);
     if (sessionId === id) navigate("/");
-    await loadSessions();
+    await deleteWithUndo({
+      entity: "ChatSession",
+      item,
+      label: "Chat session",
+      onChange: loadSessions,
+    });
   };
 
   const handleApplyTag = (tag) => { console.log("Tag:", tag); };

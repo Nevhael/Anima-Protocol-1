@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/lib/ConfirmDialog";
+import { deleteWithUndo } from "@/lib/undoableDelete";
 
 const CATEGORIES = ["companion", "warrior", "mystic", "scientist", "villain", "hero", "other"];
 const STATUSES = ["online", "standby", "offline"];
@@ -85,13 +86,18 @@ export default function Characters() {
   const handleDelete = async (id) => {
     const ok = await confirm({
       title: "Delete this character?",
-      message: "This permanently removes the character and cannot be undone.",
+      message: "You'll have a few seconds to undo this.",
       confirmLabel: "Delete",
     });
     if (!ok) return;
     setDeletingId(id);
-    await base44.entities.Character.delete(id);
-    await loadCharacters();
+    const item = characters.find((c) => c.id === id);
+    await deleteWithUndo({
+      entity: "Character",
+      item,
+      label: "Character",
+      onChange: loadCharacters,
+    });
     setDeletingId(null);
   };
 
