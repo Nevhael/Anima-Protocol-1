@@ -52,6 +52,9 @@ import ResponseSuggestions from "@/components/chat/ResponseSuggestions";
 import NarrativeArcPanel from "@/components/narrative/NarrativeArcPanel";
 import RelationshipEvolutionMap from "@/components/network/RelationshipEvolutionMap";
 import DynamicPortrait from "@/components/chat/DynamicPortrait";
+import SerenityAvatar from "@/components/chat/SerenityAvatar";
+import ResonanceField from "@/components/chat/ResonanceField";
+import { useResonance, resonancePromptGuidance } from "@/hooks/useResonance";
 import VoiceChatMode from "@/components/chat/VoiceChatMode";
 import VoiceInputPanel from "@/components/chat/VoiceInputPanel";
 import ImageGenerationModal from "@/components/chat/ImageGenerationModal";
@@ -113,6 +116,8 @@ export default function Chat() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [voiceChatOpen, setVoiceChatOpen] = useState(false);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
+  const [immersive, setImmersive] = useState(false);
+  const [immersiveInput, setImmersiveInput] = useState("");
   const [portraitUrls, setPortraitUrls] = useState({}); // cached portrait URLs per emotion
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -189,10 +194,12 @@ export default function Chat() {
     const charEmotion = characterEmotions[char?.id];
     const emotion = charEmotion?.emotion || 'neutral';
     const intensity = charEmotion?.intensity || 5;
-    if (voiceId && emotionalTTS.isEnabled) {
+    // ElevenLabs falls back to the server default voice when the character has
+    // no cloned voice assigned, so auto-speak works even without a voice clone.
+    if (emotionalTTS.isEnabled) {
       emotionalTTS.speakWithEmotion(content, voiceId, emotion, intensity);
-    } else if (voiceId && elTTS.isEnabled) {
-      elTTS.speak(content, voiceId);
+    } else if (elTTS.isEnabled) {
+      elTTS.speak(content, voiceId, intensity, emotion);
     } else if (tts.isEnabled) {
       tts.speak(content);
     }
@@ -220,6 +227,17 @@ export default function Chat() {
     ? characterEmotions[activeSession.character_id]?.emotion || "neutral"
     : currentMood;
   useEmotionalTheming(activeEmotion);
+
+  // Resonance Field — 0..100 emotional bond meter driving the living avatar
+  // and the depth of the companion's responses (emotional intimacy only).
+  const activeCharId = activeSession?.character_id;
+  const activeCharEmotion = activeCharId ? characterEmotions[activeCharId] : null;
+  const resonance = useResonance({
+    messageCount: activeSession?.messages?.length || 0,
+    relationship: activeCharId ? relationships[activeCharId] : null,
+    emotion: activeCharEmotion,
+  });
+  const isCompanionSpeaking = tts.isSpeaking || elTTS.isSpeaking || emotionalTTS.isSpeaking;
 
   useEffect(() => {
     loadSessions();
@@ -271,11 +289,13 @@ export default function Chat() {
     const emotion = charEmotion?.emotion || 'neutral';
     const intensity = charEmotion?.intensity || 5;
     
-    // Use emotional TTS with voice emotion adjustment if available
-    if (voiceId && emotionalTTS.isEnabled) {
+    // Use emotional TTS with voice emotion adjustment if available.
+    // ElevenLabs falls back to the server default voice when the character
+    // has no cloned voice assigned, so voice still works out of the box.
+    if (emotionalTTS.isEnabled) {
       emotionalTTS.speakWithEmotion(content, voiceId, emotion, intensity);
-    } else if (voiceId && elTTS.isEnabled) {
-      elTTS.speak(content, voiceId);
+    } else if (elTTS.isEnabled) {
+      elTTS.speak(content, voiceId, intensity, emotion);
     } else if (tts.isEnabled) {
       tts.speak(content);
     }
@@ -362,7 +382,7 @@ export default function Chat() {
       }
     }
     lastMsgCountRef.current = msgs.length;
-  }, [activeSession?.messages, speakMessage]);
+  }, [activeSession?.messages, speakMessageNative]);
 
   const extractCurrentLocation = (messageContent) => {
     const locationMatch = messageContent.match(/\[LOCATION:\s*([^\]]+)\]/i);
@@ -1065,6 +1085,8 @@ ${lewdityGuide}`;
           Story so far:
           ${conversationHistory}
 
+          EMOTIONAL RESONANCE: ${resonancePromptGuidance(resonance.value)} Let this shape your warmth, presence, and proactiveness — deepen emotional intimacy, closeness, and care. Never explicit or anatomical content.
+
           Respond as ${char.name} would in real life — short, natural, human. Say one thing at a time. React to what was just said. Don't monologue unless pressed. ${lengthGuide}
 
           If the character's emotional state changes significantly, prepend a tag like [EMOTION: grief-stricken] before the response. If the scene moves to a new location, prepend [LOCATION: the ruined temple]. Only include these tags when there's a clear shift — not every message.`;
@@ -1620,6 +1642,9 @@ Someone has just addressed you, Serenity. Respond briefly and in character — p
               onCreateBranch={() => setShowCreateBranch(true)}
               onShowExport={() => setShowExportArchive(true)}
             />
+            {activeSession?.mode === "solo" && activeSession?.character_id && (
+              <ResonanceField value={resonance.value} label={resonance.label} />
+            )}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-2 sm:space-y-4 min-h-0 relative" data-no-swipe data-scroll-preserve style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'var(--tab-bar-height, 60px)' }}>
               <GoToTopButton containerRef={scrollContainerRef} />
               <ChatWidgetsArea
@@ -1878,26 +1903,105 @@ Someone has just addressed you, Serenity. Respond briefly and in character — p
         />
       )}
 
-      {/* Dynamic Portraits Sidebar (Solo Mode) */}
-      {activeSession?.mode === "solo" && activeSession?.character_id && (
+      {/* Living Avatar Sidebar (Solo Mode) */}
+      {activeSession?.mode === "solo" && activeSession?.character_id && !immersive && (
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 20 }}
-          className="hidden xl:flex absolute right-0 top-0 h-full flex-col items-center justify-center gap-4 pr-4 py-6 pointer-events-none"
+          className="hidden xl:flex absolute right-0 top-0 h-full flex-col items-center justify-center gap-3 pr-6 py-6 pointer-events-none z-30"
         >
-          {characters
-            .filter((c) => c.id === activeSession.character_id)
-            .map((char) => (
-              <div key={char.id} className="pointer-events-auto">
-                <DynamicPortrait
-                  character={char}
-                  emotion={characterEmotions[char.id]?.emotion || "calm"}
-                  intensity={characterEmotions[char.id]?.intensity || 5}
-                  onGeneratePortrait={handleGeneratePortrait}
-                />
-              </div>
-            ))}
+          <div className="pointer-events-auto flex flex-col items-center gap-3">
+            <SerenityAvatar
+              name={activeCharForPaths?.name || "Serenity"}
+              emotion={activeCharEmotion?.emotion || "calm"}
+              intensity={activeCharEmotion?.intensity ?? 5}
+              resonance={resonance.value}
+              speaking={isCompanionSpeaking}
+              size={200}
+              onExpand={() => setImmersive(true)}
+            />
+            <button
+              onClick={() => setImmersive(true)}
+              className="font-mono text-[9px] tracking-[0.25em] uppercase text-primary/60 hover:text-primary border border-primary/30 hover:border-primary/60 rounded px-3 py-1 transition-colors"
+            >
+              ⛶ Immersive
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Immersive Full-Screen Presence */}
+      {immersive && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3 py-6"
+          style={{ background: "radial-gradient(circle at 50% 38%, rgba(3,18,26,0.97), rgba(0,0,0,0.99))" }}
+        >
+          <button
+            onClick={() => setImmersive(false)}
+            className="absolute top-5 right-5 font-mono text-[10px] tracking-[0.25em] uppercase text-primary/70 hover:text-primary border border-primary/30 hover:border-primary/60 rounded px-3 py-1.5 transition-colors z-10"
+          >
+            ✕ Exit
+          </button>
+
+          <div className="w-full max-w-md px-6">
+            <ResonanceField value={resonance.value} label={resonance.label} />
+          </div>
+
+          <SerenityAvatar
+            name={activeCharForPaths?.name || "Serenity"}
+            emotion={activeCharEmotion?.emotion || "calm"}
+            intensity={activeCharEmotion?.intensity ?? 5}
+            resonance={resonance.value}
+            speaking={isCompanionSpeaking}
+            size={340}
+          />
+
+          <div className="w-full max-w-lg px-6 max-h-[20vh] overflow-y-auto text-center">
+            {(() => {
+              const msgs = (activeSession?.messages || []).filter(
+                (m) =>
+                  m.character_name !== "__typing__" &&
+                  m.character_name !== "__thinking__" &&
+                  m.type !== "event"
+              );
+              const last = msgs[msgs.length - 1];
+              if (!last) return null;
+              return (
+                <p className="font-mono text-sm text-primary/85 leading-relaxed whitespace-pre-wrap">
+                  {(last.content || "").replace(/\[[^\]]*\]/g, "").trim()}
+                </p>
+              );
+            })()}
+          </div>
+
+          <form
+            className="w-full max-w-lg px-6 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const text = immersiveInput.trim();
+              if (!text || isLoading) return;
+              setImmersiveInput("");
+              handleSendMessage(text);
+            }}
+          >
+            <input
+              value={immersiveInput}
+              onChange={(e) => setImmersiveInput(e.target.value)}
+              placeholder="Speak to her..."
+              className="flex-1 bg-black/50 border border-primary/30 focus:border-primary/70 rounded px-4 py-2.5 font-mono text-sm text-primary placeholder:text-primary/30 outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="font-mono text-[11px] tracking-widest uppercase text-black bg-primary/90 hover:bg-primary disabled:opacity-40 rounded px-4 transition-colors"
+            >
+              {isLoading ? "..." : "Send"}
+            </button>
+          </form>
         </motion.div>
       )}
       <BottomTabBar onMenuClick={() => setShowMobileMenu(prev => !prev)} />

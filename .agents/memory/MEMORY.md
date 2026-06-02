@@ -1,2 +1,3 @@
 - [Anima chat prompt path](anima-chat-prompt-path.md) — live AI prompt assembly is in Chat.jsx handleSendMessage; chatMessageHandler.js is dead code (never imported).
+- [Anima voice / TTS](anima-voice-tts.md) — ElevenLabs uses a binary /api/tts route (NOT functions.invoke); auto-play uses speakMessageNative; falls back to default voice.
 - [Anima character seeding race](anima-seeding-race.md) — localStorage seed effects must be StrictMode-race-safe (promise lock + guard); api-server dev has no watch, restart to rebuild.
