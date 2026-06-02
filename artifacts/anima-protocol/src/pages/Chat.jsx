@@ -49,6 +49,7 @@ import CharacterEvolutionPanel from "@/components/chat/CharacterEvolutionPanel";
 import GroupDynamicsPanel from "@/components/group/GroupDynamicsPanel";
 import WorldStateMonitor from "@/components/world/WorldStateMonitor";
 import ResponseSuggestions from "@/components/chat/ResponseSuggestions";
+import QuickActionChips from "@/components/chat/QuickActionChips";
 import NarrativeArcPanel from "@/components/narrative/NarrativeArcPanel";
 import RelationshipEvolutionMap from "@/components/network/RelationshipEvolutionMap";
 import DynamicPortrait from "@/components/chat/DynamicPortrait";
@@ -1225,6 +1226,15 @@ ${c.speaking_style ? `Voice: ${c.speaking_style}` : ""}${rel}`;
       // Parse event tags from the AI response: [EMOTION: ...] [LOCATION: ...]
       const eventTagRegex = /\[(EMOTION|LOCATION):([^\]]+)\]/gi;
       const strippedResult = result.replace(eventTagRegex, "").trim();
+
+      // Variable typing rhythm — pace the reveal like a real person typing,
+      // scaling with length and adding the occasional longer pause so it never
+      // feels like instant AI output. The __typing__ indicator stays up meanwhile.
+      const typeChars = (strippedResult || result || "").length;
+      let typeDelay = Math.min(2600, Math.max(400, typeChars * 11)) + Math.random() * 350;
+      if (Math.random() < 0.15) typeDelay += 700 + Math.random() * 900;
+      await new Promise((resolve) => setTimeout(resolve, typeDelay));
+
       const eventMessages = [];
       let match;
       const tagScanner = new RegExp(eventTagRegex.source, "gi");
@@ -1844,6 +1854,12 @@ Someone has just addressed you, Serenity. Respond briefly and in character — p
                   isLoading={isLoading}
                   sessionMode={activeSession?.mode}
                 />
+                {activeSession.mode === "solo" && activeSession.character_id && (
+                  <QuickActionChips
+                    onSelect={(directive) => handleSendMessage(directive)}
+                    disabled={isLoading}
+                  />
+                )}
                 {activeSession.mode === "solo" && activeSession.character_id && (
                   <ResponseSuggestions
                     sessionId={activeSession.id}

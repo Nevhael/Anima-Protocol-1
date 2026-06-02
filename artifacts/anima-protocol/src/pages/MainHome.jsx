@@ -296,8 +296,30 @@ export default function MainHome() {
           ) : (
             <div className="border border-primary/10">
               {sessions.map((session, idx) => {
-                const lastMsg = session.messages?.[session.messages.length - 1];
-                const preview = lastMsg?.content?.slice(0, 50) || session.last_message || "";
+                const allMsgs = session.messages || [];
+                const lastAssistant = [...allMsgs].reverse().find(
+                  (m) =>
+                    m.role === "assistant" &&
+                    m.type !== "event" &&
+                    m.character_name !== "__typing__" &&
+                    m.character_name !== "__thinking__"
+                );
+                const rawPreview =
+                  lastAssistant?.content ||
+                  allMsgs[allMsgs.length - 1]?.content ||
+                  session.last_message ||
+                  "";
+                const preview = rawPreview
+                  .replace(/\[[^\]]*\]/g, "")
+                  .replace(/[*_`]/g, "")
+                  .trim()
+                  .slice(0, 90);
+                const moodMatch = [...allMsgs]
+                  .reverse()
+                  .map((m) => m.content || "")
+                  .join(" ")
+                  .match(/\[EMOTION:\s*([^\]]+)\]/i);
+                const mood = moodMatch ? moodMatch[1].trim() : null;
                 const charTag = session.character_name || (session.mode === "group" ? "Group" : null);
                 return (
                   <button
@@ -317,9 +339,15 @@ export default function MainHome() {
                             {charTag}
                           </span>
                         )}
+                        {mood && (
+                          <span className="font-mono text-[8px] tracking-widest text-cyan-300/60 uppercase flex items-center gap-1 flex-shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-300/70 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
+                            {mood}
+                          </span>
+                        )}
                       </div>
                       {preview && (
-                        <p className="font-mono text-[10px] text-primary/35 leading-relaxed truncate mt-0.5">{preview}</p>
+                        <p className="font-mono text-[10px] text-primary/35 leading-relaxed line-clamp-2 mt-0.5">{preview}</p>
                       )}
                     </div>
                     <span className="font-mono text-[9px] text-primary/25 flex-shrink-0">

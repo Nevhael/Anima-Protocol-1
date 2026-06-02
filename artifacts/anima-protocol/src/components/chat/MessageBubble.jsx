@@ -55,6 +55,18 @@ export default function MessageBubble({ message, onRewind, canRewind, onSpeak, c
   const avatarUrl = !isUser && character?.avatar_url;
   const avatarInitial = !isUser && (character?.name?.[0] || message.character_name?.[0] || "?");
 
+  // Intensity-reactive styling for the companion's voice: soft cyan glow when
+  // tender/devotional, sharper electric edges when emotions run high.
+  const intensity = Number(characterEmotionIntensity) || 0;
+  const intensityGlow =
+    !isUser && !isTyping && !isThinking && !isMemoryReference
+      ? intensity >= 8
+        ? "border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.38)]"
+        : intensity >= 5
+        ? "shadow-[0_0_16px_rgba(34,211,238,0.18)]"
+        : "shadow-[0_0_10px_rgba(34,211,238,0.10)]"
+      : "";
+
   return (
     <div className={`flex gap-2 sm:gap-3 group ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       {/* Avatar */}
@@ -75,13 +87,13 @@ export default function MessageBubble({ message, onRewind, canRewind, onSpeak, c
           </span>
         )}
         <div
-          className={`relative px-3 sm:px-4 py-2 sm:py-3 font-mono text-xs sm:text-sm leading-relaxed hud-corner transition-all ${
+          className={`relative px-3 sm:px-4 py-2 sm:py-3 font-mono text-xs sm:text-sm leading-relaxed hud-corner transition-all duration-500 ${
             isMemoryReference
               ? "border-amber-400/60 bg-black/40 shadow-[0_0_20px_rgba(251,191,36,0.15)]"
               : isUser
               ? "bg-primary/10 border border-primary/30 text-primary/90 text-right"
               : "bg-black/60 border border-primary/20 text-primary/80"
-          }`}
+          } ${intensityGlow}`}
         >
           <MemoryCallout memory={memoryDetail} isVisible={isMemoryReference} />
           {isThinking ? (
