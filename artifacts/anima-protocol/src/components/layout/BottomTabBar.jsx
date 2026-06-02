@@ -47,6 +47,7 @@ export default function BottomTabBar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [mostRecentSessionId, setMostRecentSessionId] = useState(null);
 
   useEffect(() => {
@@ -59,8 +60,13 @@ export default function BottomTabBar() {
     navigate("/chat");
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     setOpen(false);
+    setConfirmSignOut(true);
+  };
+
+  const confirmAndSignOut = async () => {
+    setConfirmSignOut(false);
     try {
       await logout("/landing");
     } catch (err) {
@@ -71,6 +77,54 @@ export default function BottomTabBar() {
 
   return (
     <>
+      {/* Sign Out Confirmation */}
+      <AnimatePresence>
+        {confirmSignOut && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm"
+              onClick={() => setConfirmSignOut(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 8 }}
+              transition={{ type: "spring", damping: 28, stiffness: 360 }}
+              className="fixed left-1/2 top-1/2 z-[1001] w-[88%] max-w-xs -translate-x-1/2 -translate-y-1/2 bg-[#090912] border border-primary/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="signout-title"
+            >
+              <div className="px-5 py-3 border-b border-primary/10">
+                <span className="font-mono text-[11px] tracking-[0.3em] text-primary/80 uppercase">// Confirm</span>
+              </div>
+              <div className="px-5 py-5">
+                <p id="signout-title" className="text-sm text-primary/90 leading-relaxed">
+                  Sign out of Anima Protocol?
+                </p>
+              </div>
+              <div className="flex border-t border-primary/10">
+                <button
+                  onClick={() => setConfirmSignOut(false)}
+                  className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] uppercase text-primary/50 hover:text-primary/80 hover:bg-primary/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmAndSignOut}
+                  className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] uppercase text-red-400 hover:text-red-300 hover:bg-red-500/10 border-l border-primary/10 transition-all"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* All Modules Overlay */}
       <AnimatePresence>
         {open && (
