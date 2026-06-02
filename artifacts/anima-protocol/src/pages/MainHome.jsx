@@ -218,7 +218,7 @@ export default function MainHome() {
         </motion.div>
 
         {/* Primary actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`grid grid-cols-1 ${sessions.length > 0 ? "sm:grid-cols-2" : ""} gap-3`}>
           <button
             onClick={handleContinue}
             className="flex items-center justify-center gap-2 px-5 py-4 bg-primary/10 border border-primary/50 text-primary hover:bg-primary/20 font-mono text-xs tracking-[0.2em] uppercase transition-all hud-corner glow-border"
@@ -226,13 +226,15 @@ export default function MainHome() {
             <MessageSquare className="w-4 h-4" />
             {sessions.length > 0 ? "Continue Session" : "Start Chatting"}
           </button>
-          <button
-            onClick={() => navigate("/chat")}
-            className="flex items-center justify-center gap-2 px-5 py-4 bg-transparent border border-primary/30 text-primary/70 hover:text-primary hover:border-primary/60 font-mono text-xs tracking-[0.2em] uppercase transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            New Chat
-          </button>
+          {sessions.length > 0 && (
+            <button
+              onClick={() => navigate("/chat")}
+              className="flex items-center justify-center gap-2 px-5 py-4 bg-transparent border border-primary/30 text-primary/70 hover:text-primary hover:border-primary/60 font-mono text-xs tracking-[0.2em] uppercase transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              New Chat
+            </button>
+          )}
         </div>
 
         {/* Mode selection */}
@@ -285,13 +287,6 @@ export default function MainHome() {
               <p className="font-mono text-[10px] tracking-[0.2em] text-primary/30 uppercase text-center">
                 No sessions yet
               </p>
-              <button
-                onClick={() => navigate("/chat")}
-                className="flex items-center gap-2 px-4 py-2 border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all font-mono text-[10px] tracking-[0.2em] uppercase text-primary"
-              >
-                <Plus className="w-3 h-3" />
-                New Session
-              </button>
             </div>
           ) : (
             <div className="border border-primary/10">
