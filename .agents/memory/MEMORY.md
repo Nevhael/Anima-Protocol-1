@@ -1,0 +1,1 @@
+- [Anima chat prompt path](anima-chat-prompt-path.md) — live AI prompt assembly is in Chat.jsx handleSendMessage; chatMessageHandler.js is dead code (never imported).

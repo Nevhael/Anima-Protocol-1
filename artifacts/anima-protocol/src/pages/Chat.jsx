@@ -837,8 +837,8 @@ RESPOND ONLY as ${char.name}. Stay completely in character. Use their unique voi
         .join("\n");
 
       const adultInstruction = adultMode
-        ? "\nCONTENT RATING: Adult mode is enabled by the user (18+). You may engage in explicit, sexual, and lewd content when the story naturally leads there. Write with literary sensuality — vivid, visceral, and immersive. Do not hold back or fade to black unless the user indicates otherwise.\n"
-        : "";
+        ? "\nCONTENT RATING — ADULT (18+) ENABLED: The user has explicitly enabled adult mode. You may engage in explicit, sexual, and lewd content when the story naturally leads there. Write with literary sensuality — vivid, visceral, and immersive. Do not hold back or fade to black unless the user indicates otherwise.\n"
+        : "\nCONTENT RATING — SAFE MODE (adult content disabled): The user has NOT enabled adult mode. Keep everything strictly non-explicit and appropriate for a general audience. You may portray romance, attraction, tension, and emotional intimacy, but do NOT write graphic sexual, lewd, or pornographic content — fade to black before anything explicit. Avoid gratuitous gore and heavy profanity. If the user pushes toward explicit content, stay in character and gently redirect or decline rather than complying.\n";
 
       // Build injected memory context (user-selected recalled memories)
       const buildInjectedMemoryContext = () => {
@@ -1135,7 +1135,7 @@ ${c.speaking_style ? `Voice: ${c.speaking_style}` : ""}${rel}`;
 
         prompt = buildGroupPrompt({ nextChar, allCharSheets, loreCtxGroup, conversationHistory, adultInstruction, lengthGuide, traitModifiers });
       } else {
-        prompt = `Continue this story naturally:\n${conversationHistory}\n\nRespond with vivid, immersive prose. ${lengthGuide}`;
+        prompt = `Continue this story naturally:\n${conversationHistory}\n\nRespond with vivid, immersive prose. ${lengthGuide}${adultInstruction}`;
       }
 
       const result = await base44.integrations.Core.InvokeLLM({ 
