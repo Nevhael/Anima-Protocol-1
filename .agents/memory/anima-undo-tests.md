@@ -20,3 +20,10 @@ description: How to unit-test delete/undo flows in anima-protocol without a serv
 impractical, and the real base44 needs auth + a running api-server.
 **How to apply:** when adding tests for other page handlers, prefer the same
 extract-to-DI-function + mock-base44 pattern over rendering the page.
+
+- The in-memory base44 mock uses a module-level `stores` Map that persists across
+  tests in a file. Any test asserting global `list()` length leaks records from
+  earlier tests. Expose `__resetStore()` from the mock factory (clear stores + id
+  counter) and call it in `beforeEach`.
+- The anima-protocol `test` script (`pnpm --filter @workspace/anima-protocol run test`)
+  is registered as the `test` validation step so the undo tests run as a CI-style gate.

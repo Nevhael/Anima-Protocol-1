@@ -9,8 +9,55 @@ vi.mock("sonner", () => {
   return { toast };
 });
 
+// The undo helpers talk to base44. Back it with a simple in-memory store so the
+// delete/restore flow can be tested without a server or auth token (the real
+// client gates every request on a Clerk token getter that never resolves under
+// vitest, so it would otherwise hang). update() acts as an upsert, mirroring the
+// real client's behaviour that restore relies on.
+vi.mock("@/api/base44Client", () => {
+  const stores = new Map();
+  let counter = 0;
+  const store = (name) => {
+    if (!stores.has(name)) stores.set(name, new Map());
+    return stores.get(name);
+  };
+  const entity = (name) => ({
+    async create(data) {
+      const id = data?.id || `id-${++counter}`;
+      const rec = { ...data, id };
+      store(name).set(id, rec);
+      return { ...rec };
+    },
+    async get(id) {
+      const rec = store(name).get(id);
+      return rec ? { ...rec } : null;
+    },
+    async update(id, data) {
+      const existing = store(name).get(id) || { id };
+      const rec = { ...existing, ...data, id };
+      store(name).set(id, rec);
+      return { ...rec };
+    },
+    async delete(id) {
+      store(name).delete(id);
+    },
+    async list() {
+      return [...store(name).values()].map((r) => ({ ...r }));
+    },
+  });
+  const entities = new Proxy({}, { get: (_, name) => entity(name) });
+  return {
+    base44: { entities },
+    default: { entities },
+    __resetStore: () => {
+      stores.clear();
+      counter = 0;
+    },
+  };
+});
+
 import { toast } from "sonner";
-import { base44 } from "@/api/base44Client";
+import { base44, __resetStore } from "@/api/base44Client";
 import {
   deleteWithUndo,
   deleteArrayItemWithUndo,
@@ -29,6 +76,7 @@ function lastUndoAction() {
 }
 
 beforeEach(() => {
+  __resetStore();
   localStorage.clear();
   toast.mockClear();
   toast.success.mockClear();
