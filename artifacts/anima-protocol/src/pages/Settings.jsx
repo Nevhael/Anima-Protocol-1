@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { deleteAllWithUndo } from "@/lib/undoableDelete";
 import {
   ArrowLeft, User, Bot, Sliders, LogOut, Shield, Save, Trash2, AlertTriangle, Loader, Volume2, HelpCircle, Scale, ExternalLink
 } from "lucide-react";
@@ -83,18 +84,32 @@ export default function Settings() {
 
   const handleClearSessions = async () => {
     setClearingData("sessions");
-    const sessions = await base44.entities.ChatSession.list("-created_date", 200);
-    await Promise.all(sessions.map((s) => base44.entities.ChatSession.delete(s.id)));
-    await loadStats();
-    setClearingData(null);
+    try {
+      const sessions = await base44.entities.ChatSession.list("-created_date", 200);
+      await deleteAllWithUndo({
+        entity: "ChatSession",
+        items: sessions,
+        label: "chat sessions",
+        onChange: loadStats,
+      });
+    } finally {
+      setClearingData(null);
+    }
   };
 
   const handleClearCustomChars = async () => {
     setClearingData("chars");
-    const chars = await base44.entities.Character.filter({ is_default: false });
-    await Promise.all(chars.map((c) => base44.entities.Character.delete(c.id)));
-    await loadStats();
-    setClearingData(null);
+    try {
+      const chars = await base44.entities.Character.filter({ is_default: false });
+      await deleteAllWithUndo({
+        entity: "Character",
+        items: chars,
+        label: "characters",
+        onChange: loadStats,
+      });
+    } finally {
+      setClearingData(null);
+    }
   };
 
   const handleDeleteAccount = async () => {
