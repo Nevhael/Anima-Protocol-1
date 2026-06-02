@@ -30,8 +30,8 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/landing';
   };
 
-  const logout = async () => {
-    await base44.auth.logout();
+  const logout = async (redirectPath) => {
+    await base44.auth.logout(redirectPath);
     setUser(null);
     setIsAuthenticated(false);
     setAuthError(null);

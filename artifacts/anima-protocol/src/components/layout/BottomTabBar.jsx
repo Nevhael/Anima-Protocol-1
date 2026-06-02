@@ -3,9 +3,10 @@ import { MessageSquare, BookOpen, Globe, Grid3x3, Home, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 
 const ALL_MODULES = [
-  { label: "Sign Out", path: "/landing", icon: "⎋" },
+  { label: "Sign Out", path: "/landing", icon: "⎋", signOut: true },
   { label: "Chat", path: "/chat", icon: "💬" },
   { label: "Settings", path: "/settings", icon: "⚙" },
   { label: "Storyboard", path: "/storyboard", icon: "📋" },
@@ -44,6 +45,7 @@ function isTabActive(tabPath, pathname) {
 export default function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [mostRecentSessionId, setMostRecentSessionId] = useState(null);
 
@@ -55,6 +57,16 @@ export default function BottomTabBar() {
 
   const handleChatNav = () => {
     navigate("/chat");
+  };
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    try {
+      await logout("/landing");
+    } catch (err) {
+      console.error("Sign out failed:", err);
+      navigate("/landing");
+    }
   };
 
   return (
@@ -84,12 +96,12 @@ export default function BottomTabBar() {
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-px bg-primary/5 p-px">
-                {ALL_MODULES.map(({ label, path, icon }) => {
+                {ALL_MODULES.map(({ label, path, icon, signOut }) => {
                   const isActive = isTabActive(path, location.pathname);
                   return (
                     <button
                       key={path}
-                      onClick={() => { navigate(path); setOpen(false); }}
+                      onClick={signOut ? handleSignOut : () => { navigate(path); setOpen(false); }}
                       className={`flex flex-col items-center justify-center gap-2 py-5 px-3 bg-[#090912] transition-all ${
                         isActive ? "bg-primary/10 text-primary" : "text-primary/40 hover:bg-primary/5 hover:text-primary/70"
                       }`}
