@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Plus, X, Edit2, Trash2, Upload, Volume2, BookOpen, Loader } from "lucide-react";
+import { autoAssignCharacterPhoto } from "@/lib/seedCharacters";
 import VoicePicker from "@/components/voice/VoicePicker";
 import VoiceCloneManager from "@/components/characters/VoiceCloneManager";
 import { Link } from "react-router-dom";
@@ -133,7 +134,13 @@ export default function Characters() {
       if (editingChar) {
         await base44.entities.Character.update(editingChar.id, finalForm);
       } else {
-        await base44.entities.Character.create(finalForm);
+        const created = await base44.entities.Character.create(finalForm);
+        // No photo provided? Auto-search one in the background.
+        if (created && !finalForm.avatar_url) {
+          autoAssignCharacterPhoto(created)
+            .then(() => loadCharacters())
+            .catch(() => {});
+        }
       }
       await loadCharacters();
       setShowForm(false);

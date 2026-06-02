@@ -1,4 +1,9 @@
 import { base44 } from "@/api/base44Client";
+import { findCharacterPhoto } from "@/lib/characterPhoto";
+
+// Characters whose photo lookup has already been attempted (by id), so we don't
+// re-query the web every page load for characters that simply have no match.
+const PHOTO_ATTEMPT_KEY = "anima_photo_attempts_v1";
 
 const SEED_KEY = "anima_characters_seeded_v1";
 // Separate key so the Invincible roster is added once for users who already
@@ -287,8 +292,86 @@ const INVINCIBLE_CHARACTERS = [
 let seedPromise = null;
 
 export function seedCharactersIfNeeded() {
-  if (!seedPromise) seedPromise = doSeed();
+  if (!seedPromise) seedPromise = doSeed().then(() => backfillCharacterPhotos());
   return seedPromise;
+}
+
+function getPhotoAttempts() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(PHOTO_ATTEMPT_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function markPhotoAttempted(attempts, id) {
+  attempts.add(id);
+  try {
+    localStorage.setItem(PHOTO_ATTEMPT_KEY, JSON.stringify([...attempts]));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+// Auto-find a web photo for one character and persist it.
+// Returns the URL on success, or null for a definitive no-match.
+// THROWS on transient lookup failures (network/server) — callers that batch
+// should treat a throw as "try again later", not "this character has no photo".
+export async function autoAssignCharacterPhoto(character) {
+  if (!character?.id) return null;
+  const url = await findCharacterPhoto(character.name, character.universe);
+  if (url) {
+    await base44.entities.Character.update(character.id, { avatar_url: url });
+  }
+  return url;
+}
+
+// Walk every created character missing a photo and try to find one on the web.
+// Runs once per character (tracked in localStorage) and is gentle/sequential so
+// it never floods the lookup service.
+let backfillPromise = null;
+export function backfillCharacterPhotos() {
+  if (!backfillPromise) backfillPromise = doBackfillPhotos();
+  return backfillPromise;
+}
+
+// Cap how many characters we process per page load so a large backlog never
+// turns startup into a long background crawl. Remaining ones are picked up on
+// the next visit.
+const BACKFILL_BATCH = 30;
+
+async function doBackfillPhotos() {
+  try {
+    const all = await base44.entities.Character.list("-created_date", 1000);
+    const attempts = getPhotoAttempts();
+    const pending = (all || []).filter(
+      (c) => c?.id && !c.avatar_url && !attempts.has(c.id)
+    );
+    if (!pending.length) return;
+
+    let added = 0;
+    let processed = 0;
+    for (const char of pending) {
+      if (processed >= BACKFILL_BATCH) break;
+      try {
+        const url = await autoAssignCharacterPhoto(char);
+        if (url) added++;
+        // Reached the service and got a definitive answer (match or no-match):
+        // don't ask again for this character.
+        markPhotoAttempted(attempts, char.id);
+        processed++;
+      } catch (err) {
+        // Transient failure (network/server). Leave this character unmarked so
+        // it's retried next time, and stop the run rather than hammering a
+        // service that's currently unhappy.
+        console.warn(`[Anima] Photo lookup unavailable, will retry later:`, err.message);
+        break;
+      }
+    }
+    if (added) console.log(`[Anima] Auto-added ${added} character photo(s).`);
+  } catch (err) {
+    console.warn("[Anima] Character photo backfill failed:", err.message);
+  }
 }
 
 // Remove duplicate characters created by the earlier StrictMode race,

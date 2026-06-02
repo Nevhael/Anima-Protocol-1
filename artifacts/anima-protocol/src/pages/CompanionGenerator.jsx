@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { autoAssignCharacterPhoto } from "@/lib/seedCharacters";
 import { Wand2, Copy, Check, AlertCircle, Loader } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -53,6 +54,9 @@ export default function CompanionGenerator() {
         status: "online",
         is_default: false,
       });
+
+      // Auto-search a portrait in the background — never blocks creation.
+      autoAssignCharacterPhoto(newChar).catch(() => {});
 
       setCompanion(null);
       setPrompt("");

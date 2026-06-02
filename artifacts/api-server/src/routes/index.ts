@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import openaiRouter from "./openai/index";
 import openaiFunctionsRouter from "./openai/functions";
 import elevenLabsRouter from "./elevenlabs";
+import characterImageRouter from "./characterImage";
 
 const router: IRouter = Router();
 
@@ -10,6 +11,7 @@ router.use(healthRouter);
 router.use("/openai", openaiRouter);
 router.use("/openai", openaiFunctionsRouter);
 router.use(elevenLabsRouter);
+router.use(characterImageRouter);
 
 router.get("/placeholder/:w/:h", (req, res) => {
   const w = Math.min(Number(req.params.w) || 150, 1200);
