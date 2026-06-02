@@ -76,7 +76,7 @@ export default function ModeSelect() {
     setSaving(true);
     try {
       await base44.auth.updateMe({ selected_mode: selectedMode });
-      navigate("/home");
+      navigate("/");
     } catch (err) {
       setError("Failed to save selection. Please try again.");
       setSaving(false);

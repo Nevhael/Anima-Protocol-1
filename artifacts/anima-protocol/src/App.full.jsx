@@ -38,7 +38,6 @@ const WorldMap = lazy(() => import("./pages/WorldMap"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const OnboardingFlow = lazy(() => import("./pages/OnboardingFlow"));
 const ModeSelect = lazy(() => import("./pages/ModeSelect"));
-const Home = lazy(() => import("./pages/Home"));
 const CheckIn = lazy(() => import("./pages/CheckIn"));
 const Journals = lazy(() => import("./pages/Journals"));
 const Wiki = lazy(() => import("./pages/Wiki"));
@@ -298,14 +297,7 @@ const AuthenticatedApp = () => {
                 </Suspense>
               }
             />
-            <Route
-              path="/home"
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <Home />
-                </Suspense>
-              }
-            />
+            <Route path="/home" element={<Navigate to="/" replace />} />
             <Route
               path="/check-in"
               element={

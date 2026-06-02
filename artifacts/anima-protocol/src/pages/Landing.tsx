@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { MessageSquare, Users, Sparkles, Heart, Settings } from "lucide-react";
+import { MessageSquare, Users } from "lucide-react";
 
 // 1. "ALIVE" GREETING ENGINE - Cyber-Mythic Phrases
 const GREETINGS = [
@@ -17,6 +18,8 @@ const GREETINGS = [
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
+
   // Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animRef = useRef<number | null>(null);
@@ -96,8 +99,8 @@ export default function Landing() {
     };
   }, []);
 
-  const handleInitialize = () => {
-    window.location.href = "/chat/1";
+  const handleReEnter = () => {
+    navigate("/");
   };
 
   return (
@@ -169,15 +172,10 @@ export default function Landing() {
       {/* 7. ACTION BUTTONS */}
       <div className="relative z-10 w-full max-w-md space-y-4">
         <button 
-          onClick={handleInitialize}
+          onClick={handleReEnter}
           className="w-full py-4 border border-cyan-400/50 bg-cyan-400/5 text-cyan-400 tracking-[0.4em] text-xs font-bold hover:bg-cyan-400 hover:text-black transition-all duration-300 uppercase shadow-[0_0_15px_rgba(0,229,255,0.1)]"
         >
-          + Initialize Session
-        </button>
-
-        <button className="w-full py-3 border border-purple-900/30 bg-purple-950/5 text-purple-400/70 tracking-[0.2em] text-[9px] flex items-center justify-center gap-3 hover:text-purple-300 hover:border-purple-500 transition-all uppercase">
-          <Heart className="w-3 h-3" />
-          Sacred Space . Affirmations & Ritual
+          + Re-Enter Protocol
         </button>
       </div>
 
@@ -186,26 +184,6 @@ export default function Landing() {
         <span className="inline-block w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
         Online • V4.3.0
       </div>
-
-      {/* 8. BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-cyan-950 px-4 py-3 flex justify-around items-center z-50">
-        <NavIcon icon={<MessageSquare size={18}/>} label="Chat" active />
-        <NavIcon icon={<Users size={18}/>} label="Characters" />
-        <NavIcon icon={<Sparkles size={18}/>} label="Animas" />
-        <NavIcon icon={<Heart size={18}/>} label="Sacred" />
-        <NavIcon icon={<Settings size={18}/>} label="Settings" />
-      </nav>
-    </div>
-  );
-}
-
-// Helper Component for Navigation
-function NavIcon({ icon, label, active = false }) {
-  return (
-    <div className={`flex flex-col items-center gap-1.5 cursor-pointer transition-all ${active ? 'text-cyan-400' : 'text-cyan-900 hover:text-cyan-600'}`}>
-      {icon}
-      <span className="text-[7px] uppercase tracking-tighter">{label}</span>
-      {active && <div className="w-6 h-[1px] bg-cyan-400 shadow-[0_0_8px_#22d3ee] mt-0.5" />}
     </div>
   );
 }

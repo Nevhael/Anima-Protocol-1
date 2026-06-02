@@ -46,7 +46,7 @@ export default function CheckIn() {
 
       setSaved(true);
       setTimeout(() => {
-        navigate("/home");
+        navigate("/");
       }, 2000);
     } catch (err) {
       console.error("Failed to save check-in:", err);
@@ -72,7 +72,7 @@ export default function CheckIn() {
       <div className="border-b border-primary/20 bg-black/60 backdrop-blur-md px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/")}
             className="text-primary/40 hover:text-primary transition-colors p-1"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -175,7 +175,7 @@ export default function CheckIn() {
         {/* Actions */}
         <div className="flex items-center justify-between pt-4">
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/")}
             className="px-6 py-2 border border-primary/20 text-primary/50 hover:text-primary/70 font-mono text-xs tracking-widest uppercase transition-all"
           >
             Cancel
