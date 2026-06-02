@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/lib/ConfirmDialog";
-import { deleteWithUndo } from "@/lib/undoableDelete";
+import { deleteWithUndo, deleteAllWithUndo } from "@/lib/undoableDelete";
 
 const CATEGORIES = ["companion", "warrior", "mystic", "scientist", "villain", "hero", "other"];
 const STATUSES = ["online", "standby", "offline"];
@@ -194,8 +194,12 @@ export default function Characters() {
   const handleDeleteAll = async () => {
     setDeletingAll(true);
     try {
-      await Promise.all(characters.map((c) => base44.entities.Character.delete(c.id)));
-      setCharacters([]);
+      await deleteAllWithUndo({
+        entity: "Character",
+        items: characters,
+        label: "characters",
+        onChange: loadCharacters,
+      });
       setShowDeleteAll(false);
     } catch (err) {
       console.error('Error deleting all characters:', err);
@@ -478,7 +482,7 @@ export default function Characters() {
               <h2 className="font-mono text-destructive tracking-[0.2em] uppercase text-sm">Delete All Characters</h2>
             </div>
             <p className="font-mono text-xs text-primary/60 leading-relaxed">
-              This will permanently delete all <span className="text-destructive font-bold">{characters.length} characters</span>. This cannot be undone.
+              This will delete all <span className="text-destructive font-bold">{characters.length} characters</span>. You'll have a few seconds to undo.
             </p>
             <div className="flex gap-3 pt-2">
               <button
