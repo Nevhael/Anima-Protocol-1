@@ -17,6 +17,9 @@
     "tsx": "catalog:",
     "typescript": "~5.9.3"
   },
+  "engines": {
+    "node": "24.x"
+  },
   "pnpm": {
     "overrides": {
       "qs@6.15.1": "6.15.2"

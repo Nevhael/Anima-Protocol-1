@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { ClerkExpressRequireAuth } from "@clerk/express";
-
+import { requireAuth } from "@clerk/express";
 
 import {
   db,
@@ -36,7 +35,7 @@ function requireUser(
   next();
 }
 
-router.use(ClerkExpressRequireAuth());
+router.use(requireAuth());
 router.use(requireUser);
 
 
