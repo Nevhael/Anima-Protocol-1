@@ -17,9 +17,9 @@ export default function CharacterProfileCard({ characterId, sessionId }) {
     setLoading(true);
     try {
       const [char, rels, prof] = await Promise.all([
-        base44.entities.Character.list().then(chars => chars?.find(c => c.id === characterId)),
+        base44.entities.Character.get(characterId),
         base44.entities.CharacterRelationship.filter({ character_a_id: characterId, session_id: sessionId || '' }),
-        base44.entities.ResonanceProfile.filter({ user_email: '' }).then(ps => ps?.[0]),
+        base44.entities.ResonanceProfile.filter({ user_email: '' }).then((ps) => ps?.[0]),
       ]);
       setCharacter(char);
       setRelationships(rels || []);

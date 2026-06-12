@@ -22,6 +22,7 @@ import ChatHeader from "@/components/chat/ChatHeader";
 import MessageBubble from "@/components/chat/MessageBubble";
 import ChatInput from "@/components/chat/ChatInput";
 import NewSessionModal from "@/components/chat/NewSessionModal";
+import MoodToneBar from "@/components/chat/MoodToneBar";
 import { Menu, X } from "lucide-react";
 import ChatBackground, { BACKGROUND_THEMES } from "@/components/chat/ChatBackground.jsx";
 import BottomTabBar from "@/components/layout/BottomTabBar";
@@ -136,6 +137,7 @@ export default function Chat() {
   const [relationships, setRelationships] = useState({}); // keyed by character_id
   const [loreEntries, setLoreEntries] = useState([]); // WorldState entries for active session
   const [currentMood, setCurrentMood] = useState("neutral");
+  const [companionTone, setCompanionTone] = useState("neutral");
   const [characterMemories, setCharacterMemories] = useState([]); // cross-session memories
   const [inventoryItems, setInventoryItems] = useState([]);
   const [showInventory, setShowInventory] = useState(false);
@@ -1065,10 +1067,38 @@ RESPOND ONLY as ${char.name}. Stay completely in character. Use their unique voi
       // Build injected memory context (user-selected recalled memories)
       const buildInjectedMemoryContext = () => {
         if (!injectedMemories.length) return "";
-        const lines = injectedMemories.map(m =>
-          `• [${(m.memory_type || '').replace(/_/g, ' ')}] ${m.title || m.subject || ''}: ${m.content || m.description || ''}`
-        ).join("\n");
-        return `\nRECALLED MEMORIES (the player has surfaced these specific past moments — reference them naturally if relevant):\n${lines}\n`;
+
+        const toneInstruction = (() => {
+          if (!companionTone) return "";
+          const toneSafe = String(companionTone).toLowerCase();
+          const toneGuide = {
+            neutral:
+              "Maintain a balanced, calm, steady presence — emotionally attentive but not exaggerated.",
+            tender:
+              "Be warm, careful, and emotionally gentle. Use soft cadence and protective kindness.",
+            playful:
+              "Be bright and lightly teasing. Use curiosity, quick wit, and responsive banter.",
+            solemn:
+              "Be reflective and grounded. Speak with quiet gravity and deliberate meaning.",
+            intense:
+              "Bring high emotional charge and urgency — vivid, passionate, and deeply engaged (no explicit content).",
+          };
+          const guide = toneGuide[toneSafe];
+          return guide
+            ? `\n\n[COMPANION TONE USER-INTENT: ${toneSafe.toUpperCase()}]\n${guide}\n`
+            : "";
+        })();
+
+        const lines = injectedMemories
+          .map(
+            (m) =>
+              `• [${(m.memory_type || "").replace(/_/g, " ")}] ${
+                m.title || m.subject || ""
+              }: ${m.content || m.description || ""}`,
+          )
+          .join("\n");
+
+        return `\nRECALLED MEMORIES (the player has surfaced these specific past moments — reference them naturally if relevant):\n${lines}\n${toneInstruction}`;
       };
 
       // Build calendar context
@@ -2185,6 +2215,13 @@ Return JSON:
                 setGeneratedContent={setGeneratedContent}
                 setWorldEvent={setWorldEvent}
               />
+
+              {/* Companion tone selector (user intent) */}
+              <div className="w-full" aria-live="polite">
+                {activeSession?.mode === "solo" && activeSession?.character_id && (
+                  <MoodToneBar tone={companionTone} onToneChange={setCompanionTone} />
+                )}
+              </div>
 
               {/* World widget area add-on (inside scrollable message feed) */}
               <div className="w-full" aria-live="polite">
